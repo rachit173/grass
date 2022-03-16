@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package graph;
+
+message Vertex {
+  uint64 id = 1;
+  message VertexState {
+    message Accumulators {
+      repeated double a = 1;
+    }
+    double old_result = 1;
+    repeated Accumulators accumulator = 2;
+    repeated double vertex_constants = 3;
+  }
+  optional VertexState state = 2;
+}
+
+message Edge {
+  uint64 src = 1;
+  uint64 dst = 2;
+}
+
+message VertexPartition {
+  repeated Vertex vertices = 1;
+  repeated Edge edges = 2;
+}
