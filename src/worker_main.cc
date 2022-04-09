@@ -25,8 +25,13 @@
 using graph::Vertex;
 using graph::Edge;
 using graph::VertexPartition;
+using graph::Interaction;
 
-void PageRank(VertexPartition& partition, int num_iters=5) {
+void InitVertexState(VertexPartition& partition) {
+
+}
+
+void ProcessInteraction(Interaction& interaction) {
 
 }
 
@@ -51,12 +56,34 @@ int main(int argc, char* argv[]) {
     vertex->mutable_state()->set_old_result(0);
   }
   int src, dst;
+  std::vector<Edge> edges;
   while (graphin >> src >> dst) {
-    auto edge = partition.add_edges();
-    edge->set_src(src);
-    edge->set_dst(dst);
+    edges.push_back(Edge(src, dst));
   }
   std::cout << "Num vertices: " << partition.vertices().size() << ", Num edges:  " << partition.edges().size() << std::endl;
-  PageRank(partition, 5);
+  std::cout << "Num edges: " << edges.size() << std::endl;
+  const int num_partitions = 2;
+  VertexPartition vertex_partitions[num_partitions];
+  InteractionEdges interaction_edges[num_partitions][num_partitions];
+  // TODO: make partitions 
+  // This should populate vertex_partitions
+  // and interaction edges
+  MakePartitions(VertexPartition, edges, num_partitions, vertex_partitions, interaction_edges);
+  // TODO
+
+  for (int i = 0; i < num_partitions; i++) {
+    InitVertexState(vertex_partitions[i]);
+  }
+  const int num_pagerank_iters = 1;
+  for (int i = 0; i < num_pagerank_iters; i++) {
+    // Actual Interactions
+    for (int j = 0; j < num_partitions; j++) {
+      for (int k = 0; k < num_partitions; k++) {
+        Interaction interaction(vertex_partitions[i], vertex_partitions[j], interaction_edges[i][j]);
+        ProcessInteraction(interaction);
+      }
+    }
+
+  }
   return 0;
 }

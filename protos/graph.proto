@@ -18,9 +18,19 @@ message Vertex {
 message Edge {
   uint64 src = 1;
   uint64 dst = 2;
+  // @TODO(future): typed edges
 }
 
 message VertexPartition {
   repeated Vertex vertices = 1;
-  repeated Edge edges = 2;
+}
+
+message InteractionEdges {
+  repeated Edge edges = 1;
+}
+
+message Interaction {
+  VertexPartition src = 1;
+  VertexPartition dst = 2;
+  InteractionEdges directed_edges = 3;
 }
