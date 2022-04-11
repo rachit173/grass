@@ -14,7 +14,6 @@
 
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
-#include <grpcpp/health_check_service_interface.h>
 
 #ifdef BAZEL_BUILD
 // #include "examples/protos/helloworld.grpc.pb.h"
@@ -26,14 +25,117 @@ using graph::Vertex;
 using graph::Edge;
 using graph::VertexPartition;
 using graph::Interaction;
+using graph::InteractionEdges;
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+int num_vertices, num_edges;
+std::vector<Edge> edges;
+
+const double ACCUMULATOR_INIT_VAL = 0.0;
+
+void init(Vertex& vertex) {
+  // set init state for PageRank
+  vertex.mutable_state()->set_old_result(1.0);
+  vertex.mutable_state()->set_accumulators(0, ACCUMULATOR_INIT_VAL);
+}
+
+// PageRank accumulator
+void gather(Vertex& src, Vertex& dst, const Edge& edge) {
+  double prev_page_rank = src.state().old_result();
+  int64_t out_degree = src.degree().out_degree();
+  double contribution = (prev_page_rank / (double) out_degree); 
+  double acc = dst.state().accumulators(0);
+  // gather contribution by adding to accumulator
+  dst.mutable_state()->set_accumulators(0, acc + contribution);
+}
+
+void apply(Vertex& vertex) {
+  double acc = vertex.state().accumulators(0);
+  double new_result = (1.0 - 0.85) + 0.85 * acc;
+  vertex.mutable_state()->set_old_result(new_result);
+  vertex.mutable_state()->set_accumulators(0, ACCUMULATOR_INIT_VAL);
+}
+
+// ################################################################################################ //
+
+int64_t PARTITION_SIZE = 0.0;
 
 void InitVertexState(VertexPartition& partition) {
-
+  for (int i = 0; i < partition.vertices().size(); i++) {
+    Vertex* vertex = partition.mutable_vertices(i);
+    init(*vertex);
+  }
 }
 
-void ProcessInteraction(Interaction& interaction) {
+void ProcessInteraction(VertexPartition *src_partition, VertexPartition *dst_partition, const InteractionEdges *directed_edges) {
+  std::cout << "Processing interaction" << std::endl;
+  int64_t num_interaction_edges = directed_edges->edges().size();
+  for(int64_t i = 0; i < num_interaction_edges; i++) {
+    const Edge *edge = &directed_edges->edges(i);
+    
+    // S[u] --> interaction.src[edge.src % partition_size]
+    // S[v] --> interaction.dst[edge.dst % partition_size]
+    // accumulator_add(S[v], S[u], edge)
 
+    int src_vertex_id = edge->src(), dst_vertex_id = edge->dst();
+    Vertex* src = src_partition->mutable_vertices(src_vertex_id % PARTITION_SIZE);
+    Vertex* dst = dst_partition->mutable_vertices(dst_vertex_id % PARTITION_SIZE);
+
+    gather(*src, *dst, *edge);
+  }
 }
+
+void ApplyPhase(VertexPartition& partition) {
+  for (int i = 0; i < partition.vertices().size(); i++) {
+    Vertex* vertex = partition.mutable_vertices(i);
+    apply(*vertex);
+  }
+}
+
+void MakePartitions(int num_partitions, std::vector<VertexPartition>& vertex_partitions, std::vector<std::vector<InteractionEdges>>& interaction_edges){
+  int partition_size = (int)(ceil((double) num_vertices / (double)num_partitions));
+  PARTITION_SIZE = partition_size;
+  std::cout << "Making Partitions of size: " << partition_size << std::endl;
+  //1.  Divide number of vertices into partitions
+  for(int i = 0; i < num_partitions; i++) {
+    int partition_start = i * partition_size, partition_end = std::min((i+1) * partition_size, num_vertices);
+    
+    // Default initialization for Vertex
+    for(int j = partition_start; j < partition_end; j++){ // j --> vertex id
+      Vertex* vertex = vertex_partitions[i].add_vertices();
+      vertex->set_id(j);
+      vertex->mutable_degree()->set_out_degree(0);
+      vertex->mutable_degree()->set_in_degree(0);
+      vertex->mutable_state()->set_old_result(0);
+      vertex->mutable_state()->add_accumulators(0);
+    }
+  }
+  
+  //2. Find edges between partitions
+  int64_t num_edges = edges.size();
+  for(int64_t i = 0; i < num_edges; i++) {
+    int src = edges[i].src(), dst = edges[i].dst();
+    int src_partition = src / partition_size, dst_partition = dst / partition_size;
+    Edge* edge = interaction_edges[src_partition][dst_partition].add_edges();
+    *edge = edges[i];
+    Vertex *src_vertex = vertex_partitions[src_partition].mutable_vertices(src % partition_size);
+    Vertex *dst_vertex = vertex_partitions[dst_partition].mutable_vertices(dst % partition_size);
+    src_vertex->mutable_degree()->set_out_degree(src_vertex->degree().out_degree() + 1);
+    dst_vertex->mutable_degree()->set_in_degree(dst_vertex->degree().in_degree() + 1);
+  }
+}
+
+// #########################################################################################################
+
+void printPartition(VertexPartition &partition) {
+  int num_vertices = partition.vertices().size();
+  for(int i = 0; i < num_vertices; i++) {
+    Vertex vertex = partition.vertices(i);
+    printf("vertex id: %ld, old_result: %f, out_degree: %d, in_degree: %d\n", vertex.id(), vertex.state().old_result(), vertex.degree().out_degree(), vertex.degree().in_degree());
+  }
+}
+
 
 int main(int argc, char* argv[]) {
   if (argc < 2) {
@@ -47,43 +149,70 @@ int main(int argc, char* argv[]) {
     std::cerr << "Error opening file: " << filename << std::endl;
     return 1;
   }
-  int num_vertices;
   graphin >> num_vertices;
   VertexPartition partition;
-  for (int i = 0; i < num_vertices; i++) {
-    auto vertex = partition.add_vertices();
-    vertex->set_id(i);
-    vertex->mutable_state()->set_old_result(0);
-  }
   int src, dst;
-  std::vector<Edge> edges;
+  Edge edge;
   while (graphin >> src >> dst) {
-    edges.push_back(Edge(src, dst));
+    edge.set_src(src);
+    edge.set_dst(dst);
+    edges.push_back(edge);
   }
-  std::cout << "Num vertices: " << partition.vertices().size() << ", Num edges:  " << partition.edges().size() << std::endl;
   std::cout << "Num edges: " << edges.size() << std::endl;
   const int num_partitions = 2;
-  VertexPartition vertex_partitions[num_partitions];
-  InteractionEdges interaction_edges[num_partitions][num_partitions];
+  std::vector<VertexPartition> vertex_partitions(num_partitions);
+  std::vector<std::vector<InteractionEdges>> interaction_edges(num_partitions, std::vector<InteractionEdges>(num_partitions));
+  
   // TODO: make partitions 
   // This should populate vertex_partitions
   // and interaction edges
-  MakePartitions(VertexPartition, edges, num_partitions, vertex_partitions, interaction_edges);
-  // TODO
+  MakePartitions(num_partitions, vertex_partitions, interaction_edges);
+  for(int i = 0; i < num_partitions; i++){
+    std::cout << "Partition " << i << std::endl;
+    std::cout << "Num vertices: " << vertex_partitions[i].vertices().size() << std::endl;
 
+    for(int j = 0; j < num_partitions; j++){
+      std::cout << "Interaction edges from " << i << " to " << j << ": " << interaction_edges[i][j].edges_size() << std::endl;
+    }
+  }
+  // TODO
+  // Initialize partition state
   for (int i = 0; i < num_partitions; i++) {
     InitVertexState(vertex_partitions[i]);
   }
-  const int num_pagerank_iters = 1;
-  for (int i = 0; i < num_pagerank_iters; i++) {
-    // Actual Interactions
-    for (int j = 0; j < num_partitions; j++) {
-      for (int k = 0; k < num_partitions; k++) {
-        Interaction interaction(vertex_partitions[i], vertex_partitions[j], interaction_edges[i][j]);
-        ProcessInteraction(interaction);
+
+  const int num_pagerank_iters = 2;
+  for (int iter = 0; iter < num_pagerank_iters; iter++) {
+    
+    // Gather Phase
+    for (int i = 0; i < num_partitions; i++) {
+      for (int j = 0; j < num_partitions; j++) {
+        VertexPartition* src =  &vertex_partitions[i];
+        VertexPartition* dst = &vertex_partitions[j];
+        InteractionEdges* edges = &interaction_edges[i][j];
+        ProcessInteraction(src, dst, edges);
       }
     }
 
+    // Apply Phase
+    for(int i = 0; i < num_partitions; i++) {
+      ApplyPhase(vertex_partitions[i]);
+    }
+
+    // Scatter phase
   }
+
+
+  // Write PageRank to file
+  std::ofstream outfile;
+  outfile.open("/mnt/Work/grass/resources/graphs/calculated_pagerank.txt");
+  for (int i = 0; i < num_partitions; i++) {
+    for (int j = 0; j < vertex_partitions[i].vertices().size(); j++) {
+      Vertex* vertex = vertex_partitions[i].mutable_vertices(j);
+      outfile << vertex->id() << " " << vertex->state().old_result() << std::endl;
+    }
+  }
+
+  outfile.close();
   return 0;
 }
