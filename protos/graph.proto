@@ -2,18 +2,36 @@ syntax = "proto3";
 
 package graph;
 
+import "google/protobuf/any.proto";
+
 message Degree {
   int32 in_degree = 1;
   int32 out_degree = 2;
+}
+
+message Int32 {
+  int32 value = 1;
+}
+
+message Double {
+  double value = 1;
+}
+
+message String {
+  string value = 1;
+}
+
+message Bool {
+  bool value = 1;
 }
 
 message Vertex {
   uint64 id = 1;
   optional Degree degree = 2;
   message VertexState {
-    double old_result = 1;
-    repeated double accumulators = 2;
-    repeated double vertex_constants = 3;
+    google.protobuf.Any result = 1;
+    google.protobuf.Any accumulator = 2;
+    // repeated double vertex_constants = 3;
   }
   optional VertexState state = 3;
 }

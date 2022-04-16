@@ -1,0 +1,52 @@
+Vertex->
+  -> getter/setter accumulator
+  -> getter/setter result
+  -> get_in_degree()
+  -> get_out_degree()
+  -> get_id()
+
+Graph ->
+  -> vector<Vertex>, vector<Edge>
+  
+  -> init_wrapper()
+  -> gather_wrapper -> gather()
+  -> apply wrapper -> apply()
+
+
+ PageRank->
+  -> init(Vertex v)
+  -> gather(Vertex src, Vertex dst, Edge e)
+  -> apply(Vertex v)
+
+ 
+  init_wrapper(Vertex v) {
+  	init(v);
+  }
+
+
+  gather_wrapper() {
+     gather()
+  }
+
+  apply_wrapper(Vertex v) {
+  	apply(v);
+  }
+
+
+##########
+20 vertices, 40 edges, 4 machines
+5 vertices[id+state] per machine
+
+
+SubGraph/Partition-->
+  -- vector<Vertex> src_vertices, dst_vertices
+  -- vector<Edge> src_2_dst_edges
+
+
+File Input -- Read file() --> Graph -- Partition --> Interactions ---> Write Output
+
+################################
+Issues:
+1. After every exchange of partition, new constructor of wrapper objects (Vertices) will be created
+2. Constructor for supported data types
+4. Decide num_partitions_

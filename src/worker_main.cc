@@ -26,6 +26,10 @@ using graph::Edge;
 using graph::VertexPartition;
 using graph::Interaction;
 using graph::InteractionEdges;
+using graph::Int32;
+using graph::Double;
+using graph::String;
+using graph::Bool;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,25 +40,50 @@ const double ACCUMULATOR_INIT_VAL = 0.0;
 
 void init(Vertex& vertex) {
   // set init state for PageRank
-  vertex.mutable_state()->set_old_result(1.0);
-  vertex.mutable_state()->set_accumulators(0, ACCUMULATOR_INIT_VAL);
+  Double init_val;
+  init_val.set_value(1.0);
+
+  Double init_accum_val;
+  init_accum_val.set_value(ACCUMULATOR_INIT_VAL);
+
+  vertex.mutable_state()->mutable_result()->PackFrom(init_val);
+  vertex.mutable_state()->mutable_accumulator()->PackFrom(init_accum_val);
 }
 
 // PageRank accumulator
 void gather(Vertex& src, Vertex& dst, const Edge& edge) {
-  double prev_page_rank = src.state().old_result();
+  Double prev_page_rank;
+  if(!src.state().result().Is<Double>()) {
+    std::cerr << "Error: Failed to unpack PageRank value" << std::endl;
+    exit(1);
+  }
+  src.state().result().UnpackTo(&prev_page_rank);
+
   int64_t out_degree = src.degree().out_degree();
-  double contribution = (prev_page_rank / (double) out_degree); 
-  double acc = dst.state().accumulators(0);
+  double contribution = (prev_page_rank.value() / (double) out_degree); 
+
+  Double acc;
+  if(!src.state().accumulator().Is<Double>()) {
+    std::cerr << "Error: Failed to unpack PageRank accumulator" << std::endl;
+    exit(1);
+  }
+  dst.state().accumulator().UnpackTo(&acc);
   // gather contribution by adding to accumulator
-  dst.mutable_state()->set_accumulators(0, acc + contribution);
+  acc.set_value(acc.value() + contribution);
+  dst.mutable_state()->mutable_accumulator()->PackFrom(acc);
 }
 
 void apply(Vertex& vertex) {
-  double acc = vertex.state().accumulators(0);
-  double new_result = (1.0 - 0.85) + 0.85 * acc;
-  vertex.mutable_state()->set_old_result(new_result);
-  vertex.mutable_state()->set_accumulators(0, ACCUMULATOR_INIT_VAL);
+  Double acc;
+  vertex.state().accumulator().UnpackTo(&acc);
+  
+  Double new_result;
+  new_result.set_value((1.0 - 0.85) + 0.85 * acc.value());
+  vertex.mutable_state()->mutable_result()->PackFrom(new_result);
+
+  Double init_accum_val;
+  init_accum_val.set_value(ACCUMULATOR_INIT_VAL);
+  vertex.mutable_state()->mutable_accumulator()->PackFrom(init_accum_val);
 }
 
 // ################################################################################################ //
@@ -107,8 +136,6 @@ void MakePartitions(int num_partitions, std::vector<VertexPartition>& vertex_par
       vertex->set_id(j);
       vertex->mutable_degree()->set_out_degree(0);
       vertex->mutable_degree()->set_in_degree(0);
-      vertex->mutable_state()->set_old_result(0);
-      vertex->mutable_state()->add_accumulators(0);
     }
   }
   
@@ -132,7 +159,10 @@ void printPartition(VertexPartition &partition) {
   int num_vertices = partition.vertices().size();
   for(int i = 0; i < num_vertices; i++) {
     Vertex vertex = partition.vertices(i);
-    printf("vertex id: %ld, old_result: %f, out_degree: %d, in_degree: %d\n", vertex.id(), vertex.state().old_result(), vertex.degree().out_degree(), vertex.degree().in_degree());
+    Double result;
+    vertex.state().result().UnpackTo(&result);
+    printf("vertex id: %ld, value: %f, out_degree: %d, in_degree: %d\n", vertex.id(), result.value(),
+            vertex.degree().out_degree(), vertex.degree().in_degree());
   }
 }
 
@@ -209,7 +239,9 @@ int main(int argc, char* argv[]) {
   for (int i = 0; i < num_partitions; i++) {
     for (int j = 0; j < vertex_partitions[i].vertices().size(); j++) {
       Vertex* vertex = vertex_partitions[i].mutable_vertices(j);
-      outfile << vertex->id() << " " << vertex->state().old_result() << std::endl;
+      Double result;
+      vertex->state().result().UnpackTo(&result);
+      outfile << vertex->id() << " " << result.value() << std::endl;
     }
   }
 

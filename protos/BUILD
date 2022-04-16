@@ -8,6 +8,7 @@ load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
 proto_library(
   name = "graph_proto",
   srcs = ["graph.proto"],
+  deps = ["@com_google_protobuf//:any_proto"],
 )
 
 cc_proto_library(
