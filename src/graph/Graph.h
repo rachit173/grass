@@ -14,7 +14,7 @@ template <typename R, typename A>
 class Graph {
 
 public:
-    Graph(std::string& graph_file);
+    Graph(std::string& graph_file, bool weighted_edges = false);
     void initialize();
     void startProcessing(const int &num_iters);
     void collectResults();

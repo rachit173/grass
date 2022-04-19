@@ -1,9 +1,10 @@
 #include "Graph.h"
 
 using graph::Double;
+using graph::Int32;
 
 template <typename R, typename A>
-Graph<R, A>::Graph(std::string& graph_file) {
+Graph<R, A>::Graph(std::string& graph_file, bool weighted_edges) {
     std::ifstream graph_file_stream(graph_file);
     if (!graph_file_stream.is_open()) {
         std::cerr << "Error opening file: " << graph_file << ". Exiting..." << std::endl;
@@ -11,13 +12,20 @@ Graph<R, A>::Graph(std::string& graph_file) {
     }
     graph_file_stream >> num_vertices_;
     int src, dst;
+    double weight = 1.0;
     graph::Edge edge;
     while (graph_file_stream >> src >> dst) {
         edge.set_src(src);
         edge.set_dst(dst);
+        if(weighted_edges) {
+            graph_file_stream >> weight;
+        }
+        edge.set_weight(weight);
+        // std::cout << "Edge: (" << edge.src() << ", " << edge.dst() << ") --> wt =" << edge.weight() << std::endl;
         edges_.push_back(Edge(edge));
     }
     num_edges_ = edges_.size();
+    std::cout << "Number of edges: " << num_edges_ << std::endl;
 
     num_partitions_ = 2;
     vertex_partitions_ = std::vector<graph::VertexPartition>(num_partitions_);
@@ -33,7 +41,7 @@ void Graph<R, A>::initialize() {
 template <typename R, typename A>
 void Graph<R, A>::startProcessing(const int &num_iters) {
     for (int iter = 0; iter < num_iters; iter++) {
-
+        std::cout << "Iteration: " << iter << std::endl;
         // Gather Phase
         for (int i = 0; i < num_partitions_; i++) {
             for (int j = 0; j < num_partitions_; j++) {
@@ -124,8 +132,21 @@ void Graph<R, A>::initializePartitions() {
 template <typename R, typename A>
 void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, graph::VertexPartition *dst_partition, const graph::InteractionEdges *directed_edges) {
     int partition_size = (int)(ceil((double) num_vertices_ / (double)num_partitions_));
-    std::cout << "Processing interaction" << std::endl;
     int64_t num_interaction_edges = directed_edges->edges().size();
+    
+    std::vector<Vertex<R,A>> src_vertices, dst_vertices;
+    for(int64_t i = 0; i < partition_size; i++) {
+        if(i < src_partition->vertices().size()) {
+            graph::Vertex* src = src_partition->mutable_vertices(i);
+            src_vertices.push_back(Vertex<R, A>(src));
+        }
+
+        if(i < dst_partition->vertices().size()) {
+            graph::Vertex* dst = dst_partition->mutable_vertices(i);
+            dst_vertices.push_back(Vertex<R, A>(dst));
+        }
+    }
+
     for(int64_t i = 0; i < num_interaction_edges; i++) {
         const graph::Edge *edge = &directed_edges->edges(i);
         
@@ -134,12 +155,12 @@ void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, grap
         // accumulator_add(S[v], S[u], edge)
 
         int src_vertex_id = edge->src(), dst_vertex_id = edge->dst();
-        graph::Vertex* src = src_partition->mutable_vertices(src_vertex_id % partition_size);
-        graph::Vertex* dst = dst_partition->mutable_vertices(dst_vertex_id % partition_size);
+        // graph::Vertex* src = src_partition->mutable_vertices(src_vertex_id % partition_size);
+        // graph::Vertex* dst = dst_partition->mutable_vertices(dst_vertex_id % partition_size);
 
-        Vertex<R, A> src_vertex(src), dst_vertex(dst);
+        // Vertex<R, A> src_vertex(src), dst_vertex(dst);
         Edge edge_obj(*edge);
-        gather(src_vertex, dst_vertex, edge_obj);
+        gather(src_vertices[src_vertex_id % partition_size], dst_vertices[dst_vertex_id % partition_size], edge_obj);
     }
 }
 
@@ -153,3 +174,4 @@ void Graph<R, A>::applyPhase(graph::VertexPartition& partition) {
 }
 
 template class Graph<Double, Double>;
+template class Graph<Int32, Int32>;

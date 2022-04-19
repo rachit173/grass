@@ -10,3 +10,13 @@ cc_library(
     "//src/graph:graph",
   ]
 )
+
+cc_library(
+  name = "shortest_path",
+  srcs = ["shortest_path.cc"],
+  hdrs = ["base_app.h", "shortest_path.h"],
+  deps = [
+    "//protos:graph_cc_grpc",
+    "//src/graph:graph",
+  ]
+)

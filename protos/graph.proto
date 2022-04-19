@@ -39,6 +39,7 @@ message Vertex {
 message Edge {
   uint64 src = 1;
   uint64 dst = 2;
+  double weight = 3;
   // @TODO(future): typed edges
 }
 

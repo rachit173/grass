@@ -3,23 +3,40 @@
 #include <fstream>
 #include "protos/graph.grpc.pb.h"
 #include "src/apps/page_rank.h"
+#include "src/apps/shortest_path.h"
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-    std::cerr << "Usage: " << argv[0] << " <graph_data>" << std::endl;
-    return 1;
+        std::cerr << "Usage: " << argv[0] << " <base dir> <output dir> <iterations>" << std::endl;
+        return 1;
     }
-    std::string filename = argv[1];
-    PageRank* app = new PageRank(filename);
+
+    std::string base_dir = argv[1];
+    int iterations = atoi(argv[3]);
+    
+    std::string filename = "web-BerkStan.txt";
+    std::string filepath = base_dir + "/graphs/" + filename;
+
+    BaseApp<Double, Double>* app;
+
+    app = new PageRank(filepath);
+    // app = new ShortestPath(filepath, 1);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
     app->initialize();
-    app->startProcessing(2);
+    app->startProcessing(iterations);
     app->collectResults();
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
     
     auto vertices = app->get_vertices();
     auto edges = app->get_edges();
 
     std::ofstream outfile;
-    outfile.open("/mnt/Work/grass/resources/graphs/calculated_pagerank_using_api.txt");
+    std::string outdir = argv[2];
+    outfile.open(outdir + "/actual_results/" + filename);
 
     for (auto &vertex: vertices) {
         Double result = vertex.get_result();

@@ -7,6 +7,10 @@
 template <typename R, typename A> // For <result, accumulator>
 class Vertex {
     public:
+    Vertex() {
+        this->vertex_ = nullptr;
+    }
+    
     Vertex(graph::Vertex *vertex){
         this->vertex_ = vertex;
     }

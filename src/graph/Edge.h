@@ -20,6 +20,10 @@ public:
         return this->edge_.dst();
     }
 
+    double get_weight() const {
+        return this->edge_.weight();
+    }
+
     graph::Edge& get_edge() {
         return this->edge_;
     }

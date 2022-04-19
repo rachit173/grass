@@ -8,7 +8,7 @@
 template <typename R, typename A>
 class BaseApp : public Graph<R, A> {
 protected:
-    BaseApp(std::string& graph_file): Graph<R, A>(graph_file) {}
+    BaseApp(std::string& graph_file, bool weighted_edges = false): Graph<R, A>(graph_file, weighted_edges) {}
 
 
 ///////////////////////// Methods to be implemented ///////////////////////////////
