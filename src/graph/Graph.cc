@@ -173,5 +173,5 @@ void Graph<R, A>::applyPhase(graph::VertexPartition& partition) {
     }
 }
 
-template class Graph<Double, Double>;
-template class Graph<Int32, Int32>;
+template class Graph<double, double>;
+// template class Graph<Int32, Int32>;

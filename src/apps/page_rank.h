@@ -6,12 +6,12 @@
 
 using graph::Double;
 
-class PageRank : public BaseApp<Double, Double> {
+class PageRank : public BaseApp<double, double> {
 public:
     PageRank(std::string& graph_file);
-    void init(Vertex<Double, Double> & vertex) override;
-    void gather(Vertex<Double, Double> & src, Vertex<Double, Double>& dst, const Edge& edge) override;
-    void apply(Vertex<Double, Double> & vertex) override;
+    void init(Vertex<double, double> & vertex) override;
+    void gather(Vertex<double, double> & src, Vertex<double, double>& dst, const Edge& edge) override;
+    void apply(Vertex<double, double> & vertex) override;
 };
 
 #endif // PAGE_RANK_H
