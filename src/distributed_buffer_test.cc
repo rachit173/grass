@@ -4,5 +4,6 @@
 
 
 TEST(DistributedBufferTest, GenerateMatchings) {
-  DistributedBuffer buffer(0, 8, 4, 2);
+  std::string server_address = "localhost:50051";
+  DistributedBuffer buffer(0, 8, 4, 2, server_address);
 }
