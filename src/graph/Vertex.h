@@ -28,23 +28,19 @@ class Vertex {
     }
 
     void set_accumulator(A& acc) {
-        this->vertex_->mutable_state()->mutable_accumulator()->PackFrom(acc);
+        this->vertex_->mutable_state()->set_accumulator(acc);
     }
 
     A get_accumulator() {
-        A acc;
-        this->vertex_->state().accumulator().UnpackTo(&acc);
-        return acc;
+        return this->vertex_->state().accumulator();
     }
 
     void set_result(R& result) {
-        this->vertex_->mutable_state()->mutable_result()->PackFrom(result);
+        this->vertex_->mutable_state()->set_result(result);
     }
 
     R get_result() {
-        R result;
-        this->vertex_->state().result().UnpackTo(&result);
-        return result;
+        return this->vertex_->state().result();
     }
 
     private:

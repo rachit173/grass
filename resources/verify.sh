@@ -13,4 +13,4 @@ base_dir=$1
 application=$2
 test_file=$3
 
-./resources/verifier $base_dir $application $test_file
+time ./resources/verifier $base_dir $application $test_file

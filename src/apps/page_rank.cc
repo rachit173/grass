@@ -2,40 +2,36 @@
 
 using graph::Double;
 
-PageRank::PageRank(std::string & graph_file) : BaseApp<Double, Double>(graph_file) {}
+PageRank::PageRank(std::string & graph_file) : BaseApp<double, double>(graph_file) {}
 
-void PageRank::init(Vertex<Double, Double> & vertex) { 
-    Double init_val;
-    init_val.set_value(1.0);
+void PageRank::init(Vertex<double, double> & vertex) { 
+    double init_val = 1.0;
 
-    Double init_accum_val;
-    init_accum_val.set_value(0.0);
+    double init_accum_val = 0.0;
 
     vertex.set_result(init_val);
     vertex.set_accumulator(init_accum_val);
 }
 
-void PageRank::gather(Vertex<Double, Double> & src, Vertex<Double, Double>& dst, const Edge& edge) {
-    Double prev_page_rank = src.get_result();
+void PageRank::gather(Vertex<double, double> & src, Vertex<double, double>& dst, const Edge& edge) {
+    double prev_page_rank = src.get_result();
     int64_t out_degree = src.get_outdegree();
 
-    double contribution = (prev_page_rank.value() / (double) out_degree); 
+    double contribution = (prev_page_rank / (double) out_degree); 
 
-    Double acc = dst.get_accumulator();
-    acc.set_value(acc.value() + contribution);
+    double acc = dst.get_accumulator();
+    acc = acc + contribution;
     
     dst.set_accumulator(acc);
 }
 
-void PageRank::apply(Vertex<Double, Double> & vertex) {
-    Double acc = vertex.get_accumulator();
+void PageRank::apply(Vertex<double, double> & vertex) {
+    double acc = vertex.get_accumulator();
 
-    Double new_result;
-    new_result.set_value((1.0 - 0.85) + 0.85 * acc.value());
+    double new_result = (1.0 - 0.85) + 0.85 * acc;
     vertex.set_result(new_result);
 
-    Double init_accum_val;
-    init_accum_val.set_value(0.0);
+    double init_accum_val = 0.0;
     vertex.set_accumulator(init_accum_val);
 }
 

@@ -3,7 +3,7 @@
 #include <fstream>
 #include "protos/graph.grpc.pb.h"
 #include "src/apps/page_rank.h"
-#include "src/apps/shortest_path.h"
+// #include "src/apps/shortest_path.h"
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
     std::string filename = "web-BerkStan.txt";
     std::string filepath = base_dir + "/graphs/" + filename;
 
-    BaseApp<Double, Double>* app;
+    BaseApp<double, double>* app;
 
     app = new PageRank(filepath);
     // app = new ShortestPath(filepath, 1);
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
     outfile.open(outdir + "/actual_results/" + filename);
 
     for (auto &vertex: vertices) {
-        Double result = vertex.get_result();
-        outfile << vertex.get_id() << " " << result.value() << std::endl;
+        double result = vertex.get_result();
+        outfile << vertex.get_id() << " " << result << std::endl;
     }
 }

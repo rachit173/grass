@@ -29,8 +29,8 @@ message Vertex {
   uint64 id = 1;
   optional Degree degree = 2;
   message VertexState {
-    google.protobuf.Any result = 1;
-    google.protobuf.Any accumulator = 2;
+    double result = 1;
+    double accumulator = 2;
     // repeated double vertex_constants = 3;
   }
   optional VertexState state = 3;
