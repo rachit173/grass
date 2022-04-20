@@ -13,14 +13,14 @@ Graph<R, A>::Graph(std::string& graph_file, bool weighted_edges) {
     graph_file_stream >> num_vertices_;
     int src, dst;
     double weight = 1.0;
-    graph::Edge edge;
     while (graph_file_stream >> src >> dst) {
-        edge.set_src(src);
-        edge.set_dst(dst);
+        graph::Edge* edge = new graph::Edge();
+        edge->set_src(src);
+        edge->set_dst(dst);
         if(weighted_edges) {
             graph_file_stream >> weight;
         }
-        edge.set_weight(weight);
+        edge->set_weight(weight);
         // std::cout << "Edge: (" << edge.src() << ", " << edge.dst() << ") --> wt =" << edge.weight() << std::endl;
         edges_.push_back(Edge(edge));
     }
@@ -138,15 +138,15 @@ void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, grap
     for(int64_t i = 0; i < partition_size; i++) {
         if(i < src_partition->vertices().size()) {
             graph::Vertex* src = src_partition->mutable_vertices(i);
-            src_vertices.push_back(Vertex<R, A>(src));
+            src_vertices.emplace_back(Vertex<R, A>(src));
         }
 
         if(i < dst_partition->vertices().size()) {
             graph::Vertex* dst = dst_partition->mutable_vertices(i);
-            dst_vertices.push_back(Vertex<R, A>(dst));
+            dst_vertices.emplace_back(Vertex<R, A>(dst));
         }
     }
-
+    Edge edge_obj;
     for(int64_t i = 0; i < num_interaction_edges; i++) {
         const graph::Edge *edge = &directed_edges->edges(i);
         
@@ -155,11 +155,7 @@ void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, grap
         // accumulator_add(S[v], S[u], edge)
 
         int src_vertex_id = edge->src(), dst_vertex_id = edge->dst();
-        // graph::Vertex* src = src_partition->mutable_vertices(src_vertex_id % partition_size);
-        // graph::Vertex* dst = dst_partition->mutable_vertices(dst_vertex_id % partition_size);
-
-        // Vertex<R, A> src_vertex(src), dst_vertex(dst);
-        Edge edge_obj(*edge);
+        edge_obj.set_edge(edge);
         gather(src_vertices[src_vertex_id % partition_size], dst_vertices[dst_vertex_id % partition_size], edge_obj);
     }
 }
