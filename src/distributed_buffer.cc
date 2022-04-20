@@ -3,13 +3,15 @@
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
+#include <vector>
+#include <utility>
 
 #ifdef BAZEL_BUILD
 // #include "examples/protos/helloworld.grpc.pb.h"
 #else
 #include "protos/graph.grpc.pb.h"
 #endif
-
+using namespace std;
 typedef vector<vector<pair<int, int>>> vvii;
 void generate_matchings(int l, int r, vvii& matchings) {
   cout << "l: " << l << " r: " << r << endl;
@@ -55,20 +57,15 @@ DistributedBuffer::DistributedBuffer(int self_rank, int num_partitions,
                                       num_partitions_(num_partitions),
                                       capacity_(capacity),
                                       num_workers_(num_workers) {
-  std::string filename = "/mnt/Work/grass/configs/planned.txt"
-  std::ifstream ss;
-  if (!ss.is_open()) {
-    std::cerr << "Error opening file: " << filename << std::endl;
-    exit(1);
-  }
+  // std::string filename = "/mnt/Work/grass/configs/planned.txt"
+  // std::ifstream ss;
+  // if (!ss.is_open()) {
+  //   std::cerr << "Error opening file: " << filename << std::endl;
+  //   exit(1);
+  // }
   int n = num_workers * 2;
-  vector<vector<pair<int, int>>> matchings_
   generate_matchings(0, n, matchings_);
-  int n, c, k;
-  while (ss >> n >> c >> k) {
-    assert(n == num_partitions_);
-    assert(c == capacity_);
-    assert(k == num_workers_);
-        
-  }
+  // for (auto& matching: matchings_) {
+    
+  // }
 }

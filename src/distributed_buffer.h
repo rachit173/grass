@@ -15,5 +15,9 @@ class DistributedBuffer {
   explicit DistributedBuffer(int self_rank, int num_partitions, int capacity, int num_workers);
 
   private:
-  vector<vector<pair<int, int>>> matchings_;
+  int self_rank_;
+  int num_partitions_;
+  int capacity_;
+  int num_workers_;
+  std::vector<std::vector<std::pair<int, int>>> matchings_;
 };
