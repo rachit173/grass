@@ -13,7 +13,7 @@
 class DistributedBuffer {
  public:
   explicit DistributedBuffer(int self_rank, int num_partitions, int capacity, int num_workers);
-
+  void GenerateMatchings(int l, int r, std::vector<std::vector<std::pair<int, int>>>& matchings);
   private:
   int self_rank_;
   int num_partitions_;

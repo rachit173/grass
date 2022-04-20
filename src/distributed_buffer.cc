@@ -13,8 +13,8 @@
 #endif
 using namespace std;
 typedef vector<vector<pair<int, int>>> vvii;
-void generate_matchings(int l, int r, vvii& matchings) {
-  cout << "l: " << l << " r: " << r << endl;
+
+void DistributedBuffer::GenerateMatchings(int l, int r, vvii& matchings) {
   if ((r-l) == 2) {
     vector<pair<int, int>> tmp;
     tmp.push_back(make_pair(l, l+1));
@@ -24,10 +24,10 @@ void generate_matchings(int l, int r, vvii& matchings) {
   int mid = l + (r-l)/2;
   vvii left_half;
   // left half
-  generate_matchings(l, mid, left_half);
+  GenerateMatchings(l, mid, left_half);
   vvii right_half;
   // right half
-  generate_matchings(mid, r, right_half);
+  GenerateMatchings(mid, r, right_half);
   // merge
   assert(left_half.size() == right_half.size());
   if (left_half.size() > 0) {
@@ -64,8 +64,6 @@ DistributedBuffer::DistributedBuffer(int self_rank, int num_partitions,
   //   exit(1);
   // }
   int n = num_workers * 2;
-  generate_matchings(0, n, matchings_);
-  // for (auto& matching: matchings_) {
-    
-  // }
+  matchings_.clear();
+  GenerateMatchings(0, n, matchings_);
 }
