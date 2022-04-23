@@ -6,6 +6,7 @@ cc_binary(
   srcs = [ "run_app.cc",],
   deps = [
     "//src/apps:page_rank",
+    "//src/apps:connected_comp",
   ]
 )
 
