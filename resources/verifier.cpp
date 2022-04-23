@@ -91,14 +91,14 @@ void writeResults(vector<double> results, string output_filename){
 /////////////////////////////////////// Application Verifiers ///////////////////////////////////////
 
 //  1. Shortest Path
-vector<double> ShortestPath(Graph &graph, int src)
+vector<double> ShortestPath(Graph &graph, int src, int num_iterations)
 {
     int V = graph.num_vertices_;
     int E = graph.num_edges_;
     vector<double> dist(V, INF);
     dist[src] = 0;
  
-    for (int i = 1; i <= 100; i++) {
+    for (int i = 1; i <= num_iterations; i++) {
         for (int j = 0; j < E; j++) {
             int u = graph.edges_[j].src;
             int v = graph.edges_[j].dst;
@@ -213,9 +213,9 @@ int main(int argc, char* argv[])
     Graph graph(input_filepath, false);
 
     if(application == "shortest-path"){
-        int src = 0;
-        if(argc > 4) src = atoi(argv[4]);
-        vector<double> results = ShortestPath(graph, src);
+        int num_iterations = 10;
+        if(argc > 4) num_iterations = atoi(argv[4]);
+        vector<double> results = ShortestPath(graph, 1, num_iterations);
         writeResults(results, output_filepath);
     }
     else if(application == "pagerank"){
