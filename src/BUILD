@@ -7,6 +7,7 @@ cc_binary(
   deps = [
     "//src/apps:page_rank",
     "//src/apps:connected_comp",
+    "//src/apps:shortest_path",
   ]
 )
 
