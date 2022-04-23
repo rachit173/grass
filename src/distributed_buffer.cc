@@ -13,6 +13,10 @@ using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
+using graph::VertexPartition;
+using graph::InteractionEdges;
+using graph::Edge;
+using graph::Vertex;
 using graph::PartitionService;
 using graph::PartitionRequest;
 using graph::PartitionReply;
@@ -73,7 +77,21 @@ void DistributedBuffer::GenerateMatchings(int l, int r, vvii& matchings) {
 }
 
 void DistributedBuffer::StartBuffer() {
-  std::this_thread::sleep_for(std::chrono::seconds(10));
+  std::this_thread::sleep_for(std::chrono::seconds(5));
+
+  // Ping all other servers.
+  for (int r = 0; r < num_workers_; r++) {
+    if (r == self_rank_) continue;
+    grpc::ClientContext context;
+    PartitionReply reply;
+    PartitionRequest request;
+    request.set_partition_id(0);
+    Status status = client_stubs_[self_rank_^1]->GetPartition(&context, request, &reply);
+    std::cout << "Ping " << r << ": " << status.ok() << std::endl;
+  }                                                                                                                                     
+
+  // Prepare the interaction queue.
+
 }
 
 void DistributedBuffer::StartServer() {
@@ -90,31 +108,110 @@ void DistributedBuffer::StartServer() {
   builder.SetMaxMessageSize(1 * 1024 * 1024 * 1024 + 1); // 1GB  
   // Finally assemble the server.
   std::unique_ptr<Server> server(builder.BuildAndStart());
-  threads_.push_back(std::thread([&]() {
-    server->Wait();
-  }));
+  server->Wait();  
 }
 
-DistributedBuffer::DistributedBuffer(int self_rank, int num_partitions, 
-                                      int capacity, int num_workers, std::string server_address): 
-                                      self_rank_(self_rank),
-                                      num_partitions_(num_partitions),
-                                      capacity_(capacity),
-                                      num_workers_(num_workers),
-                                      server_address_(server_address) {
+void DistributedBuffer::LoadInitialPartitions() {
+  // load initial partitions
+  int left_super_partition = (2*self_rank_);
+  int right_super_partition = (2*self_rank_+1);
+  int B = capacity_/2;
+  for (int i = 0; i < capacity_ / 2; i++) {
+    graph::VertexPartition part;
+    part.set_partition_id(left_super_partition*B + i);
+    partitions_first_half_.push_back(part);
+  }
+  for (int i = capacity_ / 2; i < capacity_; i++) {
+    graph::VertexPartition part;
+    part.set_partition_id(right_super_partition*B + i);
+    partitions_second_half_.push_back(part);
+  }
+}
+
+void DistributedBuffer::SetupClientStubs() {
+  // setup client stubs
+  for (int i = 0; i < num_workers_; i++) {
+    grpc::ChannelArguments ch_args;
+    ch_args.SetMaxReceiveMessageSize(-1);
+    std::string target_str = server_addresses_[i];
+    auto channel = grpc::CreateCustomChannel(target_str, grpc::InsecureChannelCredentials(), ch_args);
+    client_stubs_.push_back(PartitionService::NewStub(channel));
+  }
+}
+
+void DistributedBuffer::LoadInteractionEdges() {
+  for (int i = 0; i < num_partitions_; i++) {
+    std::vector<InteractionEdges> interaction_vect;
+    for (int j = 0; j < num_partitions_; j++) {
+      interaction_vect.push_back(InteractionEdges());
+    }
+    interaction_edges_.push_back(interaction_vect);
+  }
+}
+
+void DistributedBuffer::MarkInteraction(std::shared_ptr<graph::Interaction> interaction) {
+  
+}
+
+// @TODO: change shared ptr for interaction to unique ptr.
+std::optional<std::shared_ptr<graph::Interaction>> DistributedBuffer::GetInteraction() {
+  if (interaction_queue_.empty()) {
+    return std::nullopt;
+  }
+  auto interaction = interaction_queue_.front();
+  interaction_queue_.pop();
+  MarkInteraction(interaction);
+  return interaction;
+}
+
+DistributedBuffer::GeneratePlan() {
+  // generate plan
+  for (int round = 0; round < matchings_.size()); round++) {
+    for (auto edge : matchings_[round]) {
+      
+    }    
+  }
+}
+
+DistributedBuffer::DistributedBuffer(DistributedBufferConfig config) {
   // std::string filename = "/mnt/Work/grass/configs/planned.txt"
   // std::ifstream ss;
   // if (!ss.is_open()) {
   //   std::cerr << "Error opening file: " << filename << std::endl;
   //   exit(1);
   // }
-  int n = num_workers * 2;
+  self_rank_ = config.self_rank;
+  num_partitions_ = config.num_partitions;
+  capacity_ = config.capacity;
+  num_workers_ = config.num_workers;
+  server_address_ = config.server_addresses[self_rank_];
+  server_addresses_ = config.server_addresses;
+  int n = num_workers_ * 2;
   matchings_.clear();
   GenerateMatchings(0, n, matchings_);
+  GeneratePlan();
 
   // Start the server.
-  StartServer();
+  threads_.push_back(std::thread([&](){
+    StartServer();
+  }));
+
+  // @TODO
+  // Load the interaction edges.
+  // Currently, all the interaction edges are loaded. 
+  // Before loading interaction edges,  
+  // GeneratePlan should be called.
+  LoadInteractionEdges();
+
+  // @TODO
+  // Load the initial partitions.
+  LoadInitialPartitions();
+
+  // Setup client stubs to other servers. 
+  SetupClientStubs();
 
   // Buffer starts working with self_rank_
-  StartBuffer();
+  threads_.push_back(std::thread([&](){
+    StartBuffer();
+  }));
 }
