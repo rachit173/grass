@@ -21,16 +21,18 @@ struct DistributedBufferConfig {
   std::vector<std::string> server_addresses;
 };
 
+void GenerateMatchings(int l, int r, std::vector<std::vector<std::pair<int, int>>>& matchings);
+void GeneratePlan(std::vector<std::vector<std::pair<int, int>>>& matchings, 
+                  std::vector<std::vector<std::pair<int, int>>>& plan, 
+                  std::vector<std::vector<std::pair<int, int>>>& machine_state);
 class DistributedBuffer {
  public:
-  explicit DistributedBuffer(DistributedBufferConfig config);
-  void GenerateMatchings(int l, int r, std::vector<std::vector<std::pair<int, int>>>& matchings);
+  explicit DistributedBuffer(DistributedBufferConfig config); 
   void StartServer();
   void StartBuffer();
   void LoadInteractionEdges();
   void LoadInitialPartitions();
   void SetupClientStubs();
-  void GeneratePlan();
   std::optional<std::shared_ptr<graph::Interaction>> GetInteraction();
   private:
   void MarkInteraction(std::shared_ptr<graph::Interaction> interaction);
@@ -39,6 +41,8 @@ class DistributedBuffer {
   int capacity_;
   int num_workers_;
   std::vector<std::vector<std::pair<int, int>>> matchings_;
+  std::vector<std::vector<std::pair<int, int>>> plan_;
+  std::vector<std::vector<std::pair<int, int>>> machine_state_;
   std::string server_address_;
   std::vector<std::thread> threads_;
   std::vector<std::vector<graph::InteractionEdges>> interaction_edges_;
