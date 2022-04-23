@@ -139,10 +139,67 @@ vector<double> PageRank(Graph &graph, int num_iterations) {
 }
 
 
+int64_t findParent(int64_t node, vector<double> &parent){
+    if(parent[node] < 0) return node;
+    parent[node] = findParent(parent[node], parent);
+    return parent[node];
+}
+
+void unionParent(int64_t node1, int64_t node2, vector<double> &parent){
+    int64_t parent1 = findParent(node1, parent);
+    int64_t parent2 = findParent(node2, parent);
+    if(parent1 != parent2){
+        if(llabs(parent[parent1]) >= llabs(parent[parent2])){
+            parent[parent1] -= 1;
+            parent[parent2] = parent1;
+        } else if(llabs(parent[parent2]) > llabs(parent[parent1]) ){
+            parent[parent2] -= 1;
+            parent[parent1] = parent2;
+        }
+    }
+}
+
+// 3. Connected Components
+vector<double> ConnectedComponents(Graph &graph) {
+    vector<double> components(graph.num_vertices_, -1);
+    // union for edges
+    for(auto edge: graph.edges_) {
+        unionParent(edge.src, edge.dst, components);
+    }
+
+    // change component for nodes to actual component
+    for(int i = 0; i < graph.num_vertices_; i++){
+        findParent(i, components);
+    }
+
+    for(int i = 0; i < graph.num_vertices_; i++){
+        if(components[i] < 0) {
+            components[i] = i;
+        }
+    }
+
+    unordered_map<int64_t, int64_t> component_map;
+    vector<double> components_new = components;
+    for(int i = 0; i < graph.num_vertices_; i++){
+        if(component_map.find(components[i]) == component_map.end()) {
+            if(i < components[i]){
+                component_map[components[i]] = i;
+            } else {
+                component_map[components[i]] = components[i];
+            }
+        }
+    }
+    for(int i = 0; i < graph.num_vertices_; i++){
+        components_new[i] = component_map[components[i]];
+    }
+
+    return components_new;
+}
+
 int main(int argc, char* argv[])
 {
     if (argc < 4) {
-        std::cerr << "Usage: " << argv[0] << "<base dir> <application> <test file>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << "<base dir> <application> <test file> [optional args]" << std::endl;
         exit(1);
     }
     
@@ -156,11 +213,19 @@ int main(int argc, char* argv[])
     Graph graph(input_filepath, false);
 
     if(application == "shortest-path"){
-        vector<double> results = ShortestPath(graph, 0);
+        int src = 0;
+        if(argc > 4) src = atoi(argv[4]);
+        vector<double> results = ShortestPath(graph, src);
         writeResults(results, output_filepath);
     }
     else if(application == "pagerank"){
-        vector<double> results = PageRank(graph, 10);
+        int num_iterations = 10;
+        if(argc > 4) num_iterations = atoi(argv[4]);
+        vector<double> results = PageRank(graph, num_iterations);
+        writeResults(results, output_filepath);
+    } 
+    else if(application == "connected-comp"){
+        vector<double> results = ConnectedComponents(graph);
         writeResults(results, output_filepath);
     }
     else{

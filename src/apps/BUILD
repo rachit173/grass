@@ -20,3 +20,13 @@ cc_library(
     "//src/graph:graph",
   ]
 )
+
+cc_library(
+  name = "connected_comp",
+  srcs = ["connected_comp.cc"],
+  hdrs = ["base_app.h", "connected_comp.h"],
+  deps = [
+    "//protos:graph_cc_grpc",
+    "//src/graph:graph",
+  ]
+)

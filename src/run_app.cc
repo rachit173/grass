@@ -3,6 +3,7 @@
 #include <fstream>
 #include "protos/graph.grpc.pb.h"
 #include "src/apps/page_rank.h"
+#include "src/apps/connected_comp.h"
 // #include "src/apps/shortest_path.h"
 
 int main(int argc, char* argv[]) {
@@ -19,8 +20,9 @@ int main(int argc, char* argv[]) {
 
     BaseApp<double, double>* app;
 
-    app = new PageRank(filepath);
+    // app = new PageRank(filepath);
     // app = new ShortestPath(filepath, 1);
+    app = new ConnectedComponents(filepath);
 
     auto start = std::chrono::high_resolution_clock::now();
 
