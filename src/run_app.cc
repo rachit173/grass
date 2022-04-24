@@ -1,12 +1,16 @@
 #include <stdio.h>
 #include <string>
 #include <fstream>
+#include <spdlog/spdlog.h>
 #include "protos/graph.grpc.pb.h"
 #include "src/apps/page_rank.h"
 #include "src/apps/connected_comp.h"
 #include "src/apps/shortest_path.h"
 
 int main(int argc, char* argv[]) {
+    spdlog::set_level(spdlog::level::trace);
+    spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
+
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <base dir> <output dir> <iterations>" << std::endl;
         return 1;
@@ -31,7 +35,8 @@ int main(int argc, char* argv[]) {
     app->collectResults();
 
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    spdlog::info("Total time: {} ms", duration.count());
     
     auto vertices = app->get_vertices();
     auto edges = app->get_edges();

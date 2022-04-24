@@ -8,6 +8,7 @@ cc_binary(
     "//src/apps:page_rank",
     "//src/apps:connected_comp",
     "//src/apps:shortest_path",
+    "@spdlog",
   ]
 )
 
