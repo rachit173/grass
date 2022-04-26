@@ -9,6 +9,7 @@
 
 #include "Vertex.h"
 #include "Edge.h"
+#include "src/distributed_buffer/distributed_buffer.h"
 
 template <typename R, typename A>
 class Graph {
