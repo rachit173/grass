@@ -1,4 +1,5 @@
 #include "Graph.h"
+#include <spdlog/spdlog.h>
 
 using graph::Double;
 using graph::Int32;
@@ -21,11 +22,10 @@ Graph<R, A>::Graph(std::string& graph_file, bool weighted_edges) {
             graph_file_stream >> weight;
         }
         edge->set_weight(weight);
-        // std::cout << "Edge: (" << edge.src() << ", " << edge.dst() << ") --> wt =" << edge.weight() << std::endl;
         edges_.push_back(Edge(edge));
     }
     num_edges_ = edges_.size();
-    std::cout << "Number of edges: " << num_edges_ << std::endl;
+    spdlog::debug("Graph: num_vertices = {}, num_edges = {}", num_vertices_, num_edges_);
 
     num_partitions_ = 2;
     vertex_partitions_ = std::vector<graph::VertexPartition>(num_partitions_);
@@ -41,7 +41,7 @@ void Graph<R, A>::initialize() {
 template <typename R, typename A>
 void Graph<R, A>::startProcessing(const int &num_iters) {
     for (int iter = 0; iter < num_iters; iter++) {
-        std::cout << "Iteration: " << iter << std::endl;
+        spdlog::debug("Iteration: {}", iter);
         // Gather Phase
         for (int i = 0; i < num_partitions_; i++) {
             for (int j = 0; j < num_partitions_; j++) {
@@ -85,7 +85,7 @@ std::vector<Edge>& Graph<R, A>::get_edges() {
 template <typename R, typename A>
 void Graph<R, A>::makePartitions() {
     int partition_size = (int)(ceil((double) num_vertices_ / (double)num_partitions_));
-    std::cout << "Making Partitions of size: " << partition_size << std::endl;
+    spdlog::debug("Making Partitions of size: {}", partition_size);
     //1.  Divide number of vertices into partitions
     for(int i = 0; i < num_partitions_; i++) {
         int partition_start = i * partition_size, partition_end = std::min((int64_t)((i+1) * partition_size), num_vertices_);
