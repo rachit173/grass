@@ -1,17 +1,15 @@
-#ifndef PAGE_RANK_H
-#define PAGE_RANK_H
+#ifndef DEGREE_H
+#define DEGREE_H
 
 #include "protos/graph.grpc.pb.h"
-#include "base_app.h"
+#include "page_rank.h"
 
-using graph::Double;
-
-class PageRank : public BaseApp<double, double> {
+class Degree : public PageRank {
 public:
-    PageRank(DistributedBufferConfig config, std::string& graph_file);
+    Degree(DistributedBufferConfig config, std::string& graph_file);
     void init(Vertex<double, double> & vertex) override;
     void gather(Vertex<double, double> & src, Vertex<double, double>& dst, const Edge& edge) override;
     void apply(Vertex<double, double> & vertex) override;
 };
 
-#endif // PAGE_RANK_H
+#endif // DEGREE_H

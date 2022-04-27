@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ITERS=$2
-
+APP=$1
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <application> <iterations>"
     exit 1

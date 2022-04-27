@@ -5,6 +5,7 @@
 #include "src/apps/page_rank.h"
 #include "src/apps/connected_comp.h"
 #include "src/apps/shortest_path.h"
+#include "src/apps/degree.h"
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -18,11 +19,19 @@ int main(int argc, char* argv[]) {
     std::string filename = "web-BerkStan.txt";
     std::string filepath = base_dir + "/graphs/" + filename;
 
+    DistributedBufferConfig config;
+    config.self_rank = 0;
+    config.capacity = 4;
+    config.num_partitions = 4;
+    config.num_workers = 1;
+    config.server_addresses = {"localhost:50051"};
+
     BaseApp<double, double>* app;
 
-    // app = new PageRank(filepath);
-    app = new ShortestPath(filepath, 1);
-    // app = new ConnectedComponents(filepath);
+    // app = new PageRank(config, filepath);
+    // app = new Degree(config, filepath);
+    // app = new ShortestPath(config, filepath, 1);
+    app = new ConnectedComponents(config, filepath);
 
     auto start = std::chrono::high_resolution_clock::now();
 

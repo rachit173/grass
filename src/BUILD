@@ -8,5 +8,9 @@ cc_binary(
     "//src/apps:page_rank",
     "//src/apps:connected_comp",
     "//src/apps:shortest_path",
-  ]
+    "//src/apps:degree",
+  ],
+  copts = [
+    "-std=c++17"
+  ],
 )

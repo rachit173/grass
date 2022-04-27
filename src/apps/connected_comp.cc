@@ -1,6 +1,6 @@
 #include "connected_comp.h"
 
-ConnectedComponents::ConnectedComponents(std::string & graph_file) : BaseApp<double, double>(graph_file) {}
+ConnectedComponents::ConnectedComponents(DistributedBufferConfig config, std::string & graph_file) : BaseApp<double, double>(config, graph_file) {}
 
 void ConnectedComponents::init(Vertex<double, double> & vertex) { 
     double init_val = vertex.get_id();

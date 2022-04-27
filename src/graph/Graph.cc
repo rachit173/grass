@@ -4,32 +4,19 @@ using graph::Double;
 using graph::Int32;
 
 template <typename R, typename A>
-Graph<R, A>::Graph(std::string& graph_file, bool weighted_edges) {
-    std::ifstream graph_file_stream(graph_file);
-    if (!graph_file_stream.is_open()) {
-        std::cerr << "Error opening file: " << graph_file << ". Exiting..." << std::endl;
-        exit(1);
-    }
-    graph_file_stream >> num_vertices_;
-    int src, dst;
-    double weight = 1.0;
-    while (graph_file_stream >> src >> dst) {
-        graph::Edge* edge = new graph::Edge();
-        edge->set_src(src);
-        edge->set_dst(dst);
-        if(weighted_edges) {
-            graph_file_stream >> weight;
-        }
-        edge->set_weight(weight);
-        // std::cout << "Edge: (" << edge.src() << ", " << edge.dst() << ") --> wt =" << edge.weight() << std::endl;
+Graph<R, A>::Graph(DistributedBufferConfig config, std::string& graph_file, bool weighted_edges) {
+    num_partitions_ = config.num_partitions;
+    buffer_ = new DistributedBuffer(config);
+    
+    // Populate vertices and edges
+    std::vector<graph::Edge*> edges;
+    num_vertices_ = buffer_->LoadInteractionEdges(graph_file, weighted_edges, edges);
+    // Apply wrapper to all edges
+    for(auto edge: edges) {
         edges_.push_back(Edge(edge));
     }
     num_edges_ = edges_.size();
     std::cout << "Number of edges: " << num_edges_ << std::endl;
-
-    num_partitions_ = 2;
-    vertex_partitions_ = std::vector<graph::VertexPartition>(num_partitions_);
-    interaction_edges_ = std::vector<std::vector<graph::InteractionEdges>>(num_partitions_, std::vector<graph::InteractionEdges>(num_partitions_));
 }
 
 template <typename R, typename A>
@@ -42,19 +29,25 @@ template <typename R, typename A>
 void Graph<R, A>::startProcessing(const int &num_iters) {
     for (int iter = 0; iter < num_iters; iter++) {
         std::cout << "Iteration: " << iter << std::endl;
+        buffer_->ProduceInteractions(); // TODO: to be removed
         // Gather Phase
-        for (int i = 0; i < num_partitions_; i++) {
-            for (int j = 0; j < num_partitions_; j++) {
-                graph::VertexPartition* src =  &vertex_partitions_[i];
-                graph::VertexPartition* dst = &vertex_partitions_[j];
-                graph::InteractionEdges* edges = &interaction_edges_[i][j];
+        while(true){
+            std::optional<WorkUnit> opt_interaction = buffer_->GetWorkUnit();
+            if(opt_interaction) {
+                WorkUnit interaction = *opt_interaction;
+                graph::VertexPartition* src = interaction.src();
+                graph::VertexPartition* dst = interaction.dst();
+                graph::InteractionEdges* edges = interaction.edges();
+                // std::cout << "Src partition: " << src->partition_id() << " " << "Dst partition: " << dst->partition_id() << std::endl;
                 processInteraction(src, dst, edges);
+            } else {
+                break;
             }
         }
 
         // Apply Phase
         for(int i = 0; i < num_partitions_; i++) {
-            applyPhase(vertex_partitions_[i]);
+            applyPhase(*(vertex_partitions_[i]));
         }
 
         // Scatter phase
@@ -65,8 +58,8 @@ template <typename R, typename A>
 void Graph<R, A>::collectResults() {
     vertices_.clear();
     for (int i = 0; i < num_partitions_; i++) {
-        for (int j = 0; j < vertex_partitions_[i].vertices().size(); j++) {
-            graph::Vertex* vertex = vertex_partitions_[i].mutable_vertices(j);
+        for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {
+            graph::Vertex* vertex = vertex_partitions_[i]->mutable_vertices(j);
             vertices_.push_back(Vertex<R, A>(vertex));
         }
     }
@@ -83,46 +76,17 @@ std::vector<Edge>& Graph<R, A>::get_edges() {
 }
 
 template <typename R, typename A>
-void Graph<R, A>::makePartitions() {
-    int partition_size = (int)(ceil((double) num_vertices_ / (double)num_partitions_));
-    std::cout << "Making Partitions of size: " << partition_size << std::endl;
-    //1.  Divide number of vertices into partitions
-    for(int i = 0; i < num_partitions_; i++) {
-        int partition_start = i * partition_size, partition_end = std::min((int64_t)((i+1) * partition_size), num_vertices_);
-
-        // Default initialization for Vertex
-        for(int j = partition_start; j < partition_end; j++){ // j --> vertex id
-            graph::Vertex* vertex = vertex_partitions_[i].add_vertices();
-            vertex->set_id(j);
-            vertex->mutable_degree()->set_out_degree(0);
-            vertex->mutable_degree()->set_in_degree(0);
-            // vertices_.push_back(Vertex(vertex));
-        }
-    }
-
-    //2. Find edges between partitions
-    // int64_t num_edges = edges.size();
-    for(int64_t i = 0; i < num_edges_; i++) {
-        int src = edges_[i].get_src(), dst = edges_[i].get_dst();
-        int src_partition = src / partition_size, dst_partition = dst / partition_size;
-        
-        // Populate InteractionEdges
-        graph::Edge *interEdge = interaction_edges_[src_partition][dst_partition].add_edges();
-        *interEdge = edges_[i].get_edge();
-        
-        // Populate degrees        
-        graph::Vertex *src_vertex = vertex_partitions_[src_partition].mutable_vertices(src % partition_size);
-        graph::Vertex *dst_vertex = vertex_partitions_[dst_partition].mutable_vertices(dst % partition_size);
-        src_vertex->mutable_degree()->set_out_degree(src_vertex->degree().out_degree() + 1);
-        dst_vertex->mutable_degree()->set_in_degree(dst_vertex->degree().in_degree() + 1);
-    }
+void Graph<R, A>::makePartitions() {    
+    //1.  Initialize relevant partitions
+    buffer_->LoadInitialPartitions();
+    vertex_partitions_ = buffer_->get_partitions();
 }
 
 template <typename R, typename A>
 void Graph<R, A>::initializePartitions() {
     for (int i = 0; i < num_partitions_; i++) {
-        for (int j = 0; j < vertex_partitions_[i].vertices().size(); j++) {
-            graph::Vertex* vertex = vertex_partitions_[i].mutable_vertices(j);
+        for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {
+            graph::Vertex* vertex = vertex_partitions_[i]->mutable_vertices(j);
             Vertex<R, A> v(vertex);
             init(v);
         }

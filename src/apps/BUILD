@@ -8,7 +8,10 @@ cc_library(
   deps = [
     "//protos:graph_cc_grpc",
     "//src/graph:graph",
-  ]
+  ],
+  copts = [
+    "-std=c++17"
+  ],
 )
 
 cc_library(
@@ -18,7 +21,10 @@ cc_library(
   deps = [
     "//protos:graph_cc_grpc",
     "//src/graph:graph",
-  ]
+  ],
+  copts = [
+    "-std=c++17"
+  ],
 )
 
 cc_library(
@@ -28,5 +34,22 @@ cc_library(
   deps = [
     "//protos:graph_cc_grpc",
     "//src/graph:graph",
-  ]
+  ],
+  copts = [
+    "-std=c++17"
+  ],
+)
+
+cc_library(
+  name = "degree",
+  srcs = ["degree.cc"],
+  hdrs = ["base_app.h", "page_rank.h", "degree.h"],
+  deps = [
+    "//protos:graph_cc_grpc",
+    "//src/graph:graph",
+    ":page_rank",
+  ],
+  copts = [
+    "-std=c++17"
+  ],
 )

@@ -2,7 +2,7 @@
 
 using graph::Double;
 
-PageRank::PageRank(std::string & graph_file) : BaseApp<double, double>(graph_file) {}
+PageRank::PageRank(DistributedBufferConfig config, std::string & graph_file) : BaseApp<double, double>(config, graph_file) {}
 
 void PageRank::init(Vertex<double, double> & vertex) { 
     double init_val = 1.0;

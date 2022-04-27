@@ -3,12 +3,13 @@
 
 #include "protos/graph.grpc.pb.h"
 #include "src/graph/Graph.h"
+#include "src/distributed_buffer/distributed_buffer.h"
 
 
 template <typename R, typename A>
 class BaseApp : public Graph<R, A> {
 protected:
-    BaseApp(std::string& graph_file, bool weighted_edges = false): Graph<R, A>(graph_file, weighted_edges) {}
+    BaseApp(DistributedBufferConfig config, std::string& graph_file, bool weighted_edges = false): Graph<R, A>(config, graph_file, weighted_edges) {}
 
 
 ///////////////////////// Methods to be implemented ///////////////////////////////

@@ -1,6 +1,6 @@
 #include "shortest_path.h"
 
-ShortestPath::ShortestPath(std::string& filename, int64_t src_vtx_id) : BaseApp<double, double> (filename), src_vtx_id_(src_vtx_id) {}
+ShortestPath::ShortestPath(DistributedBufferConfig config, std::string& filename, int64_t src_vtx_id) : BaseApp<double, double> (config, filename), src_vtx_id_(src_vtx_id) {}
 
 void ShortestPath::init(Vertex<double, double> & vertex) {
     double init_dist = 1e9;
