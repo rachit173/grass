@@ -26,18 +26,25 @@ int main(int argc, char* argv[]) {
     config.num_workers = 1;
     config.server_addresses = {"localhost:50051"};
 
-    BaseApp<double, double>* app;
+    Degree* app;
 
     // app = new PageRank(config, filepath);
-    // app = new Degree(config, filepath);
+    app = new Degree(config, filepath);
+    app->set_fn_pointers();
     // app = new ShortestPath(config, filepath, 1);
-    app = new ConnectedComponents(config, filepath);
+    // app = new ConnectedComponents(config, filepath);
 
     auto start = std::chrono::high_resolution_clock::now();
 
     app->initialize();
-    app->startProcessing(iterations);
+    app->startProcessing(1);
     app->collectResults();
+
+    PageRank* app2 = (PageRank*)app;
+    app2->set_fn_pointers();
+    app2->initialize();
+    app2->startProcessing(iterations);
+    app2->collectResults();
 
     auto end = std::chrono::high_resolution_clock::now();
     std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;

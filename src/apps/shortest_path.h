@@ -7,9 +7,9 @@
 class ShortestPath : public BaseApp<double, double> {
 public:
     ShortestPath(DistributedBufferConfig config, std::string& graph_file, int64_t source_vtx_id);
-    void init(Vertex<double, double> & vertex) override;
-    void gather(Vertex<double, double> & src, Vertex<double, double>& dst, const Edge& edge) override;
-    void apply(Vertex<double, double> & vertex) override;
+    void init(Vertex<double, double> & vertex) ;
+    void gather(Vertex<double, double> & src, Vertex<double, double>& dst, const Edge& edge) ;
+    void apply(Vertex<double, double> & vertex) ;
 
 private:
     int64_t src_vtx_id_;

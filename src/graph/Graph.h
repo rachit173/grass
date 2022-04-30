@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <functional>
 #include <grpcpp/grpcpp.h>
 #include "protos/graph.grpc.pb.h"
 
@@ -21,11 +22,9 @@ public:
     void collectResults();
     std::vector<Vertex<R,A>>& get_vertices();
     std::vector<Edge>& get_edges();
-
-protected:
-    virtual void init(Vertex<R,A> & vertex) = 0;
-    virtual void gather(Vertex<R,A>& src, Vertex<R,A>& dst, const Edge& edge) = 0;
-    virtual void apply(Vertex<R,A>& vertex) = 0;
+    std::function<void (Vertex<R,A> &)> init_fn;
+    std::function<void (Vertex<R,A>&, Vertex<R,A>&, const Edge&)> gather_fn;
+    std::function<void (Vertex<R,A>&)> apply_fn;
 
 private:
     int64_t num_vertices_;

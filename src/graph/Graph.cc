@@ -17,11 +17,11 @@ Graph<R, A>::Graph(DistributedBufferConfig config, std::string& graph_file, bool
     }
     num_edges_ = edges_.size();
     std::cout << "Number of edges: " << num_edges_ << std::endl;
+    makePartitions();
 }
 
 template <typename R, typename A>
 void Graph<R, A>::initialize() {
-    makePartitions();
     initializePartitions();
 }
 
@@ -88,7 +88,7 @@ void Graph<R, A>::initializePartitions() {
         for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {
             graph::Vertex* vertex = vertex_partitions_[i]->mutable_vertices(j);
             Vertex<R, A> v(vertex);
-            init(v);
+            init_fn(v);
         }
     }
 }
@@ -120,7 +120,7 @@ void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, grap
 
         int src_vertex_id = edge->src(), dst_vertex_id = edge->dst();
         edge_obj.set_edge(edge);
-        gather(src_vertices[src_vertex_id % partition_size], dst_vertices[dst_vertex_id % partition_size], edge_obj);
+        gather_fn(src_vertices[src_vertex_id % partition_size], dst_vertices[dst_vertex_id % partition_size], edge_obj);
     }
 }
 
@@ -129,7 +129,7 @@ void Graph<R, A>::applyPhase(graph::VertexPartition& partition) {
     for (int i = 0; i < partition.vertices().size(); i++) {
         graph::Vertex* vertex = partition.mutable_vertices(i);
         Vertex<R, A> v(vertex);
-        apply(v);
+        apply_fn(v);
     }
 }
 
