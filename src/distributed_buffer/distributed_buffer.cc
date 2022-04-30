@@ -40,6 +40,7 @@ class PartitionServiceImpl final : public PartitionService::Service {
 };
 
 void DistributedBuffer::StartBuffer() {
+  std::cout << "Starting the distributed buffer for rank " << self_rank_ << std::endl;
   std::this_thread::sleep_for(std::chrono::seconds(5));
 
   // Ping all other servers.
@@ -49,8 +50,8 @@ void DistributedBuffer::StartBuffer() {
     PartitionReply reply;
     PartitionRequest request;
     request.set_partition_id(0);
-    Status status = client_stubs_[self_rank_^1]->GetPartition(&context, request, &reply);
-    std::cout << "Ping " << r << ": " << status.ok() << std::endl;
+    Status status = client_stubs_[r]->GetPartition(&context, request, &reply);
+    std::cout << "Ping: rank: " << r << ", address: " << server_addresses_[r] << ", status: " << status.ok() << std::endl;
   }                                                                                                                                     
 
   // Prepare the interaction queue.
@@ -89,6 +90,7 @@ void DistributedBuffer::MarkInteraction(WorkUnit interaction) {
   
 }
 
+// TODO: Remove this eventually. It's just for testing.
 void DistributedBuffer::ProduceInteractions() {
   for(int i = 0; i < num_partitions_; i++) {
     for(int j = 0; j < num_partitions_; j++) {

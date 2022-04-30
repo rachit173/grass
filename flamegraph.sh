@@ -1,9 +1,9 @@
 #!/bin/bash
 
-ITERS=$2
-APP=$1
+RANK=$1
+CONFIG_FILE=$2
 if [ $# -ne 2 ]; then
-    echo "Usage: $0 <application> <iterations>"
+    echo "Usage: $0 <rank> <Config filepath>"
     exit 1
 fi
 
@@ -20,7 +20,7 @@ echo "Build"
 bazel build //src:run_app --copt=-O3
 
 echo "Starting application"
-bazel run //src:run_app --copt=-O3 -- $RESOURCES_DIR $OUTPUT_DIR $ITERS &
+bazel run //src:run_app --copt=-O3 -- $RANK $CONFIG_FILE &
 appPid=$!
 
 echo "Recording..."

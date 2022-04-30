@@ -3,6 +3,8 @@
 using graph::Double;
 using graph::Int32;
 
+// ########################## PUBLIC METHODS ##################################
+
 template <typename R, typename A>
 Graph<R, A>::Graph(DistributedBufferConfig config, std::string& graph_file, bool weighted_edges) {
     num_partitions_ = config.num_partitions;
@@ -33,20 +35,18 @@ void Graph<R, A>::startProcessing(const int &num_iters) {
         // Gather Phase
         while(true){
             std::optional<WorkUnit> opt_interaction = buffer_->GetWorkUnit();
-            if(opt_interaction) {
-                WorkUnit interaction = *opt_interaction;
-                graph::VertexPartition* src = interaction.src();
-                graph::VertexPartition* dst = interaction.dst();
-                graph::InteractionEdges* edges = interaction.edges();
-                // std::cout << "Src partition: " << src->partition_id() << " " << "Dst partition: " << dst->partition_id() << std::endl;
-                processInteraction(src, dst, edges);
-            } else {
-                break;
-            }
+            if(opt_interaction == std::nullopt) break;
+            
+            WorkUnit interaction = *opt_interaction;
+            graph::VertexPartition* src = interaction.src();
+            graph::VertexPartition* dst = interaction.dst();
+            graph::InteractionEdges* edges = interaction.edges();
+            processInteraction(src, dst, edges);
         }
 
         // Apply Phase
-        for(int i = 0; i < num_partitions_; i++) {
+        int num_local_partitions = vertex_partitions_.size();
+        for(int i = 0; i < num_local_partitions; i++) {
             applyPhase(*(vertex_partitions_[i]));
         }
 
@@ -57,7 +57,8 @@ void Graph<R, A>::startProcessing(const int &num_iters) {
 template <typename R, typename A>
 void Graph<R, A>::collectResults() {
     vertices_.clear();
-    for (int i = 0; i < num_partitions_; i++) {
+    int num_local_partitions = vertex_partitions_.size();
+    for (int i = 0; i < num_local_partitions; i++) {
         for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {
             graph::Vertex* vertex = vertex_partitions_[i]->mutable_vertices(j);
             vertices_.push_back(Vertex<R, A>(vertex));
@@ -75,8 +76,11 @@ std::vector<Edge>& Graph<R, A>::get_edges() {
     return edges_;
 }
 
+// #############################################################################
+// ########################## PRIVATE METHODS ##################################
+
 template <typename R, typename A>
-void Graph<R, A>::makePartitions() {    
+void Graph<R, A>::makePartitions() {
     //1.  Initialize relevant partitions
     buffer_->LoadInitialPartitions();
     vertex_partitions_ = buffer_->get_partitions();
@@ -84,7 +88,8 @@ void Graph<R, A>::makePartitions() {
 
 template <typename R, typename A>
 void Graph<R, A>::initializePartitions() {
-    for (int i = 0; i < num_partitions_; i++) {
+    int num_local_partitions = vertex_partitions_.size();
+    for (int i = 0; i < num_local_partitions; i++) {
         for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {
             graph::Vertex* vertex = vertex_partitions_[i]->mutable_vertices(j);
             Vertex<R, A> v(vertex);
