@@ -31,7 +31,6 @@ template <typename R, typename A>
 void Graph<R, A>::startProcessing(const int &num_iters) {
     for (int iter = 0; iter < num_iters; iter++) {
         std::cout << "Iteration: " << iter << std::endl;
-        buffer_->ProduceInteractions(); // TODO: to be removed
         // Gather Phase
         while(true){
             std::optional<WorkUnit> opt_interaction = buffer_->GetWorkUnit();
@@ -41,6 +40,7 @@ void Graph<R, A>::startProcessing(const int &num_iters) {
             graph::VertexPartition* src = interaction.src();
             graph::VertexPartition* dst = interaction.dst();
             graph::InteractionEdges* edges = interaction.edges();
+            std::cout << "Processing interaction: Src partition: " << src->partition_id() << ", Dst partition: " << dst->partition_id() << std::endl;
             processInteraction(src, dst, edges);
         }
 

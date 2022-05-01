@@ -18,9 +18,6 @@ using graph::VertexPartition;
 using graph::InteractionEdges;
 using graph::Edge;
 using graph::Vertex;
-using graph::PartitionService;
-using graph::PartitionRequest;
-using graph::PartitionReply;
 #ifdef BAZEL_BUILD
 // #include "examples/protos/helloworld.grpc.pb.h"
 #else
@@ -92,17 +89,20 @@ void GenerateMatchings(int l, int r, vvii& matchings) {
   }
 }
 
-void GeneratePlan(vector<vector<pair<int, int>>>& matchings, vector<vector<pair<int, int>>>& plan, vector<vector<pair<int, int>>>& machine_state) {
+void GeneratePlan(vector<vector<pair<int, int>>>& matchings, vector<vector<pair<int, int>>>& plan, vector<vector<pair<int, int>>>& machine_state, vector<vector<int>>& partition_to_be_sent) {
   // matchings -> for this machine a vector<pair> which contains the machine_id, superpartition_id
   int k = matchings[0].size();
   int n = 2*k;
   int rounds = matchings.size();
   plan.resize(rounds, vector<pair<int, int>>(k));
   machine_state.resize(rounds, vector<pair<int, int>>(k));
+  partition_to_be_sent.resize(rounds, vector<int>(k));
+
   int partition_machine[rounds][n];
   // Initialiazation for round 0 for all machines. 
   for (int w = 0; w < k; w++) {
     plan[0][w] = {w, -1};
+    partition_to_be_sent[0][w] = -1;
   }
   for (int i = 0; i < k; i++) {
     auto e = matchings[0][i];
@@ -160,6 +160,13 @@ void GeneratePlan(vector<vector<pair<int, int>>>& matchings, vector<vector<pair<
       partition_machine[i][p1] = machine_of_p1;
       partition_machine[i][p2] = machine_of_p1;
       machine_state[i][machine_of_p1] = {p1, p2};
+
+      // Partition to be sent is the one that was present in previous cycle but is not in the current cycle.
+      if(machine_state[i - 1][machine_of_p1].first != p1){ // not checking for p2 as p2 is not on the machine.
+        partition_to_be_sent[i - 1][machine_of_p1] = machine_state[i - 1][machine_of_p1].first;
+      } else {
+        partition_to_be_sent[i - 1][machine_of_p1] = machine_state[i - 1][machine_of_p1].second;
+      }
     }
   }
 }

@@ -8,6 +8,7 @@
 #include <mutex>
 #include <vector>
 #include <queue>
+#include <condition_variable>
 
 #ifdef BAZEL_BUILD
 // #include "examples/protos/helloworld.grpc.pb.h"
@@ -44,7 +45,8 @@ private:
 void GenerateMatchings(int l, int r, std::vector<std::vector<std::pair<int, int>>>& matchings);
 void GeneratePlan(std::vector<std::vector<std::pair<int, int>>>& matchings, 
                   std::vector<std::vector<std::pair<int, int>>>& plan, 
-                  std::vector<std::vector<std::pair<int, int>>>& machine_state);
+                  std::vector<std::vector<std::pair<int, int>>>& machine_state,
+                  std::vector<std::vector<int>>& partition_to_be_sent);
 class DistributedBuffer {
 public:
   explicit DistributedBuffer(DistributedBufferConfig config); 
@@ -56,9 +58,21 @@ public:
   std::vector<graph::VertexPartition*>& get_partitions();
   std::optional<WorkUnit> GetWorkUnit();
   void ProduceInteractions(); // TODO: to be removed
+  graph::VertexPartition* SendPartition(int partition_id);
+  void ClearPartition(int partition_id);
 
 private:
+  int GetStablePartitionId();
+  void ReleasePartition(int super_partition_id, int partition_id);
+  void CheckAndReleaseOutgoingPartition(int outgoing_super_partition_id, int stable_super_partition_id, int partition_id);
+  void AddPartitionToBuffer(graph::VertexPartition* partition);
+  
+  bool IsEpochComplete();
+  bool IsRoundComplete();
   void MarkInteraction(WorkUnit interaction);
+  void FillPartitions();
+  void AddInteractions(graph::VertexPartition* partition);
+  
   graph::VertexPartition* InitPartition(int partition_id, int partition_start, int partition_end);
   void InitSuperPartition(std::vector<graph::VertexPartition*>& super_partition, int super_partition_id);
 
@@ -67,18 +81,27 @@ private:
   int capacity_;
   int num_workers_;
   int partition_size_;
+  int current_round_;
+  int buffer_size_;
   std::vector<std::vector<std::pair<int, int>>> matchings_;
   std::vector<std::vector<std::pair<int, int>>> plan_;
   std::vector<std::vector<std::pair<int, int>>> machine_state_;
+  std::vector<std::vector<int>> partition_to_be_sent_;
   std::string server_address_;
   std::vector<std::thread> threads_;
   std::vector<std::vector<graph::InteractionEdges>> interaction_edges_;
   std::vector<graph::VertexPartition*> partitions_first_half_;
   std::vector<graph::VertexPartition*> partitions_second_half_;
   std::vector<graph::VertexPartition*> vertex_partitions_;
+  std::unordered_map<int, graph::VertexPartition*> done_partitions_;
+  std::vector<std::vector<bool>> interactions_matrix_;
   std::vector<std::pair<int, int>> super_partitiion_order_;
   std::vector<std::string> server_addresses_;
   std::vector<std::unique_ptr<graph::PartitionService::Stub>> client_stubs_;
   std::queue<WorkUnit> interaction_queue_;
+  std::condition_variable cv_;
+  std::mutex mutex_;
+  std::condition_variable cv_send_;
+  std::mutex mutex_send_;
 };
 #endif // DISTRIBUTED_BUFFER_H
