@@ -46,11 +46,13 @@ void Graph<R, A>::startProcessing(const int &num_iters) {
         }
 
         // Apply Phase
+        vertex_partitions_ = buffer_->get_partitions();
         int num_local_partitions = vertex_partitions_.size();
         for(int i = 0; i < num_local_partitions; i++) {
             applyPhase(*(vertex_partitions_[i]));
         }
 
+        buffer_->waitForEpochCompletion();
         // Scatter phase
     }
 }
@@ -58,6 +60,7 @@ void Graph<R, A>::startProcessing(const int &num_iters) {
 template <typename R, typename A>
 void Graph<R, A>::collectResults() {
     vertices_.clear();
+    vertex_partitions_ = buffer_->get_partitions();
     int num_local_partitions = vertex_partitions_.size();
     for (int i = 0; i < num_local_partitions; i++) {
         for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {

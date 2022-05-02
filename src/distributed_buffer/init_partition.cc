@@ -119,7 +119,10 @@ void DistributedBuffer::LoadInitialPartitions() {
 void DistributedBuffer::ProduceInteractions() {
   for(int i = 0; i < capacity_; i++) {
     for(int j = 0; j < capacity_; j++) {
-      WorkUnit interaction(vertex_partitions_[i], vertex_partitions_[j], &interaction_edges_[i][j]);
+      graph::VertexPartition* src = vertex_partitions_[i];
+      graph::VertexPartition* dst = vertex_partitions_[j];
+      graph::InteractionEdges* interEdges = &interaction_edges_[src->partition_id()][dst->partition_id()];
+      WorkUnit interaction(src, dst, interEdges);
       // std::cout << "Inserting interaction: (" << vertex_partitions_[i]->partition_id() << ", " << vertex_partitions_[j]->partition_id() << ") to queue." << std::endl;
       interaction_queue_.push(interaction);
     }

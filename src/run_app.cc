@@ -52,11 +52,11 @@ int main(int argc, char* argv[]) {
     app->startProcessing(1);
     app->collectResults();
 
-    PageRank* app2 = (PageRank*)app;
-    app2->set_fn_pointers();
-    app2->initialize();
-    app2->startProcessing(iterations);
-    app2->collectResults();
+    // PageRank* app2 = (PageRank*)app;
+    // app2->set_fn_pointers();
+    // app2->initialize();
+    // app2->startProcessing(iterations);
+    // app2->collectResults();
 
     auto end = std::chrono::high_resolution_clock::now();
     std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
@@ -65,6 +65,7 @@ int main(int argc, char* argv[]) {
     auto edges = app->get_edges();
 
     std::ofstream outfile;
+    filename = filename + "_" + std::to_string(buffer_config.self_rank);
     outfile.open(outdir + "/actual_results/" + filename);
 
     for (auto &vertex: vertices) {

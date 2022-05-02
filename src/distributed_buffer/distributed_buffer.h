@@ -61,6 +61,8 @@ public:
   graph::VertexPartition* SendPartition(int partition_id);
   void ClearPartition(int partition_id);
   void MarkInteraction(WorkUnit interaction);
+  void notifyEpochComplete();
+  void waitForEpochCompletion();
 
 private:
   int GetStablePartitionId(int round);
@@ -107,5 +109,7 @@ private:
   std::mutex mutex_;
   std::condition_variable cv_send_;
   std::mutex mutex_send_;
+  std::condition_variable cv_epoch_completion_;
+  std::mutex mutex_epoch_completion_;
 };
 #endif // DISTRIBUTED_BUFFER_H

@@ -45,10 +45,14 @@ class PartitionServiceImpl final : public PartitionService::Service {
       std::cout << "GetPartition called requesting for super partition " << super_partition_id << std::endl;
       graph::VertexPartition* partition = buffer_->SendPartition(super_partition_id);
       response->set_super_partition_id(super_partition_id);
-      response->mutable_partition()->CopyFrom(*partition);
+      response->mutable_partition()->set_partition_id(partition->partition_id());
+      response->mutable_partition()->mutable_vertices()->CopyFrom(partition->vertices());
+      
       
       delete partition;
       std::cout << "GetPartition returning partition" << response->partition().partition_id() << " for super partition " << super_partition_id << std::endl;
+
+      buffer_->notifyEpochComplete();
       return Status::OK;
     }
 };
@@ -92,6 +96,18 @@ void DistributedBuffer::SetupClientStubs() {
     std::string target_str = server_addresses_[i];
     auto channel = grpc::CreateCustomChannel(target_str, grpc::InsecureChannelCredentials(), ch_args);
     client_stubs_.push_back(PartitionService::NewStub(channel));
+  }
+}
+
+void DistributedBuffer::notifyEpochComplete() {
+  std::unique_lock<std::mutex> lock(mutex_epoch_completion_);
+  cv_epoch_completion_.notify_one();
+}
+
+void DistributedBuffer::waitForEpochCompletion() {
+  while(!done_partitions_.empty()) {
+    std::unique_lock<std::mutex> lock(mutex_epoch_completion_);
+    cv_epoch_completion_.wait(lock);
   }
 }
 

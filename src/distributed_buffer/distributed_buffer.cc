@@ -40,10 +40,13 @@ void DistributedBuffer::MarkInteraction(WorkUnit interaction) {
   // 2. Identify the outgoing partition and superpartition and check if it can be released.
   int outgoing_super_partition = partition_to_be_sent_[current_round_][self_rank_];
   int stable_super_partition = GetStablePartitionId(current_round_);
-  // 3. Check and try to release partition if it is part of outgoing super partition.
-  CheckAndReleaseOutgoingPartition(outgoing_super_partition, stable_super_partition, src_partition_id);
-  if(src_partition_id != dst_partition_id) {
-    CheckAndReleaseOutgoingPartition(outgoing_super_partition, stable_super_partition, dst_partition_id);
+  
+  if(current_round_ != partition_to_be_sent_.size() - 1) {
+    // 3. Check and try to release partition if it is part of outgoing super partition.
+    CheckAndReleaseOutgoingPartition(outgoing_super_partition, stable_super_partition, src_partition_id);
+    if(src_partition_id != dst_partition_id) {
+      CheckAndReleaseOutgoingPartition(outgoing_super_partition, stable_super_partition, dst_partition_id);
+    }
   }
 
   // Advance round if all interactions are done for this round
