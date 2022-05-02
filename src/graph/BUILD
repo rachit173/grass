@@ -8,6 +8,7 @@ cc_library(
     deps = [ 
       "//protos:graph_cc_grpc",
       "@com_github_grpc_grpc//:grpc++",
-      "@spdlog"
+      "@spdlog",
+      "//src/distributed_buffer:distributed_buffer"
     ],
 )
