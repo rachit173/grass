@@ -30,70 +30,7 @@ using graph::PingResponse;
 #endif
 using namespace std;
 
-class PartitionServiceImpl final : public PartitionService::Service {
-  private:
-    DistributedBuffer* buffer_;
-  public:
-    explicit PartitionServiceImpl(DistributedBuffer* buffer) : buffer_(buffer) {}
-    Status Ping(ServerContext* context, const PingRequest* request, PingResponse* response) {
-      return Status::OK;
-    }
-    Status GetPartition(ServerContext* context, const PartitionRequest* request, PartitionResponse* response) {
-      int super_partition_id = request->super_partition_id();
-      graph::VertexPartition* partition = buffer_->SendPartition(super_partition_id);
-      response->set_super_partition_id(super_partition_id);
-      graph::VertexPartition* response_partition = response->mutable_partition();
-      if(response_partition == nullptr) {
-        *response_partition = *partition;
-      }
-      
-      delete partition;
-      return Status::OK;
-    }
-};
-
-void DistributedBuffer::StartBuffer() {
-  std::cout << "Rank: " << self_rank_ << std::endl;
-  std::cout << "Starting the distributed buffer for rank " << self_rank_ << std::endl;
-  // Ping all other servers
-  for (int r = 0; r < num_workers_; r++) {
-    if (r == self_rank_) continue;
-    grpc::ClientContext context;
-    PingResponse response;
-    PingRequest request;
-    Status status = client_stubs_[r]->Ping(&context, request, &response);
-    std::cout << "Ping: rank: " << r << ", address: " << server_addresses_[r] << ", status ok? " << status.ok() << std::endl;
-  }
-}
-
-void DistributedBuffer::StartServer() {
-  PartitionServiceImpl service(this);
-  grpc::EnableDefaultHealthCheckService(true);
-  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
-  ServerBuilder builder;
-  // Listen on the given address without any authentication mechanism.
-  builder.AddListeningPort(server_address_, grpc::InsecureServerCredentials());
-  // Register "service" as the instance through which we'll communicate with
-  // clients. In this case it corresponds to an *synchronous* service.
-  builder.RegisterService(&service);
-  builder.SetMaxReceiveMessageSize(1 * 1024 * 1024 * 1024 + 1); // 1GB
-  builder.SetMaxMessageSize(1 * 1024 * 1024 * 1024 + 1); // 1GB  
-  // Finally assemble the server.
-  std::unique_ptr<Server> server(builder.BuildAndStart());
-  server->Wait();  
-}
-
-void DistributedBuffer::SetupClientStubs() {
-  // setup client stubs
-  for (int i = 0; i < num_workers_; i++) {
-    grpc::ChannelArguments ch_args;
-    ch_args.SetMaxReceiveMessageSize(-1);
-    std::string target_str = server_addresses_[i];
-    auto channel = grpc::CreateCustomChannel(target_str, grpc::InsecureChannelCredentials(), ch_args);
-    client_stubs_.push_back(PartitionService::NewStub(channel));
-  }
-}
-
+// ############################ Interaction Processing ########################
 void DistributedBuffer::MarkInteraction(WorkUnit interaction) {
   // 1. Mark interaction as done
   int src_partition_id = interaction.src()->partition_id(), dst_partition_id = interaction.dst()->partition_id();
@@ -102,27 +39,33 @@ void DistributedBuffer::MarkInteraction(WorkUnit interaction) {
 
   // 2. Identify the outgoing partition and superpartition and check if it can be released.
   int outgoing_super_partition = partition_to_be_sent_[current_round_][self_rank_];
-  int stable_super_partition = GetStablePartitionId();
+  int stable_super_partition = GetStablePartitionId(current_round_);
   // 3. Check and try to release partition if it is part of outgoing super partition.
   CheckAndReleaseOutgoingPartition(outgoing_super_partition, stable_super_partition, src_partition_id);
-  if(src_partition_id != dst_partition_id){
+  if(src_partition_id != dst_partition_id) {
     CheckAndReleaseOutgoingPartition(outgoing_super_partition, stable_super_partition, dst_partition_id);
   }
 
   // Advance round if all interactions are done for this round
   if(IsRoundComplete()) {
     std::cout << "Round " << current_round_ << " complete" << std::endl;
-    // current_round_++; // When to advance round??
+    current_round_++; // TODO: Might have to put a lock around it as it's read in a different thread as well
   }
 }
 
 void DistributedBuffer::FillPartitions() {
-  while(true) {
+  // Epoch done when all planned partitions are fetched. -> currently terminate thread
+  while(fill_round_ < plan_.size()) {
     // sleep if the buffer is full
-    if(buffer_size_ == capacity_) std::this_thread::sleep_for(std::chrono::seconds(1));
+    while(buffer_size_ == capacity_){
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    std::cout << "Trying to request partition. Buffer size: " << buffer_size_ << std::endl;
 
     // Get partition according to plan
-    int target_machine = plan_[current_round_ + 1][self_rank_].first, target_super_partition = plan_[current_round_ + 1][self_rank_].second;
+    int target_machine = plan_[fill_round_][self_rank_].first, target_super_partition = plan_[fill_round_][self_rank_].second;
+    std::cout << "Fill Round " << fill_round_ << " requesting partition from " << target_machine << " for super partition " << target_super_partition << std::endl;
+    // Target super partition maybe present in the buffer due to the round number not getting updated
     grpc::ClientContext context;
     PartitionRequest request;
     request.set_super_partition_id(target_super_partition);
@@ -131,22 +74,30 @@ void DistributedBuffer::FillPartitions() {
     Status status = client_stubs_[target_machine]->GetPartition(&context, request, &response);
     if (!status.ok()) {
       std::cout << "GetPartition failed: " << status.error_code() << ": " << status.error_message() << std::endl;
-      return;
+      continue; // Try again if failed, don't return
     }
-    std::cout << "GetPartition: super partition_id: " << response.super_partition_id() << std::endl;
+    std::cout << "GetPartition: super_partition_id: " << response.super_partition_id() << std::endl;
     // Add partition to buffer
     graph::VertexPartition* partition = new graph::VertexPartition();
     *partition = response.partition();
-    cout << "Partition vertices size: " << partition->vertices().size() << endl;
+    
+    // Add partition to buffer and interactions corresponding to the new partition
     AddPartitionToBuffer(partition);
     AddInteractions(partition);
+
+    // Fetch capacity_/2 partitions from other machines in every round
+    partitions_fetched_[fill_round_]++;
+    if(partitions_fetched_[fill_round_] == (capacity_/2)) {
+      fill_round_++;
+      partitions_fetched_[fill_round_] = 0;
+    }
   }
 }
 
 void DistributedBuffer::AddInteractions(graph::VertexPartition* partition) {
-  int stable_super_partition_id = GetStablePartitionId();
+  int stable_super_partition_id = GetStablePartitionId(fill_round_ - 1);
   int incoming_partition_id = partition->partition_id();
-  cout << "Stable super partition id: " << stable_super_partition_id << ", incoming partition id: " << incoming_partition_id << endl;
+  // cout << "Stable super partition id: " << stable_super_partition_id << ", incoming partition id: " << incoming_partition_id << endl;
   int partition_start = stable_super_partition_id * (capacity_ /2), partition_end = (stable_super_partition_id + 1) * (capacity_ /2);
 
   // Determine which half is the stable super partition
@@ -156,23 +107,25 @@ void DistributedBuffer::AddInteractions(graph::VertexPartition* partition) {
     start_idx = capacity_/2;
   }
   
-  cout << "Acquire lock and insert undone interactions" << endl;
-  cout << "Start idx in buffer: " << start_idx << endl;
   std::unique_lock<std::mutex> lock(mutex_);
-
+  int added_interactions = 0;
   for(int i = start_idx; i < start_idx + capacity_/2; i++) {
     graph::VertexPartition* vp = vertex_partitions_[i];
     if(!interactions_matrix_[incoming_partition_id][vp->partition_id()]) {
       WorkUnit interaction(partition, vp, &interaction_edges_[incoming_partition_id][vp->partition_id()]);
       interaction_queue_.push(interaction);
-      cout << "Inserted interaction: (" << incoming_partition_id << ", " << vp->partition_id() << ")" << endl;
+      added_interactions++;
+      // cout << "Inserted interaction: (" << incoming_partition_id << ", " << vp->partition_id() << ")" << endl;
     }
     if(!interactions_matrix_[vp->partition_id()][incoming_partition_id]) {
       WorkUnit interaction(vp, partition, &interaction_edges_[vp->partition_id()][incoming_partition_id]);
       interaction_queue_.push(interaction);
-      cout << "Inserted interaction: (" << vp->partition_id() << ", " << incoming_partition_id << ")" << endl;
+      added_interactions++;
+      // cout << "Inserted interaction: (" << vp->partition_id() << ", " << incoming_partition_id << ")" << endl;
     }
   }
+  std::cout << "Added " << added_interactions << " interactions" << endl;
+
   cv_.notify_one();
 }
 
@@ -185,19 +138,20 @@ std::optional<WorkUnit> DistributedBuffer::GetWorkUnit() {
     cv_.wait(lock); // release lock and wait till queue populated
   }
 
+  else if(IsEpochComplete()) {
+    std::cout << "Epoch complete, returning empty optional" << std::endl;
+    return std::nullopt;
+  }
+
   auto interaction = interaction_queue_.front();
+  std::cout << "Round " << current_round_ << ": " << "GetWorkUnit: (" << interaction.src()->partition_id() << ", " << interaction.dst()->partition_id() << ")" << std::endl;
   interaction_queue_.pop();
-  MarkInteraction(interaction);
   return interaction;
 }
 
+// Determine if an epoch is complete
 bool DistributedBuffer::IsEpochComplete() {
-  for(int i = 0; i < num_partitions_; i++) {
-    for(int j = 0; j < num_partitions_; j++) {
-      if(!interactions_matrix_[i][j]) return false;
-    }
-  }
-  return true;
+  return current_round_ >= matchings_.size();
 }
 
 bool DistributedBuffer::IsRoundComplete() {
@@ -205,19 +159,45 @@ bool DistributedBuffer::IsRoundComplete() {
   int partition_start1 = current_state.first * capacity_/2, partition_end1 = (current_state.first + 1) * capacity_/2;
   int partition_start2 = current_state.second * capacity_/2, partition_end2 = (current_state.second + 1) * capacity_/2;
 
-  // If all interactions between 2 super partitions are done --> round complete
+  // 1. Check if all interactions between 2 super partitions are done
+  // Check interactions within the same super partition only for the 0th round, as they won't happen in further rounds
+  if(current_round_ == 0) {
+    for(int i = partition_start1; i < partition_end1; i++) {
+      for(int j = partition_start1; j < partition_end1; j++) {
+        if(!interactions_matrix_[i][j]) return false;
+      }
+    }
+
+    for(int i = partition_start2; i < partition_end2; i++) {
+      for(int j = partition_start2; j < partition_end2; j++) {
+        if(!interactions_matrix_[i][j]) return false;
+      }
+    }
+  }
+
   for(int i = partition_start1; i < partition_end1; i++) {
     for(int j = partition_start2; j < partition_end2; j++) {
-      if(!interactions_matrix_[i][j]) return false;
+      if(!interactions_matrix_[i][j] || !interactions_matrix_[j][i]) return false;
     }
   }
   return true;
 }
 
+void DistributedBuffer::PrintInteractionMatrix() {
+  std::cout << "Interaction matrix: " << std::endl;
+  for(int i = 0; i < num_partitions_; i++) {
+    for(int j = 0; j < num_partitions_; j++) {
+      std::cout << interactions_matrix_[i][j] << "";
+    }
+    std::cout << std::endl;
+  }
+}
 
+// ################## Constructor ##############################
 DistributedBuffer::DistributedBuffer(DistributedBufferConfig config) {  
   self_rank_ = config.self_rank;
   num_partitions_ = config.num_partitions;
+
   capacity_ = config.capacity;
   num_workers_ = config.num_workers;
   server_address_ = config.server_addresses[self_rank_];
@@ -231,6 +211,8 @@ DistributedBuffer::DistributedBuffer(DistributedBufferConfig config) {
   GeneratePlan(matchings_, plan_, machine_state_, partition_to_be_sent_);
   current_round_ = 0;
   buffer_size_ = 0;
+  fill_round_ = 1;
+  partitions_fetched_ = std::vector<int>(matchings_.size(), 0);
   interactions_matrix_ = std::vector<std::vector<bool>>(num_partitions_, std::vector<bool>(num_partitions_, false));
   done_partitions_.clear();
 
@@ -243,7 +225,5 @@ DistributedBuffer::DistributedBuffer(DistributedBufferConfig config) {
   SetupClientStubs();
 
   // Buffer starts working with self_rank_
-  threads_.push_back(std::thread([&](){
-    StartBuffer();
-  }));
+  StartBuffer();
 }

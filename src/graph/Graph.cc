@@ -40,8 +40,9 @@ void Graph<R, A>::startProcessing(const int &num_iters) {
             graph::VertexPartition* src = interaction.src();
             graph::VertexPartition* dst = interaction.dst();
             graph::InteractionEdges* edges = interaction.edges();
-            std::cout << "Processing interaction: Src partition: " << src->partition_id() << ", Dst partition: " << dst->partition_id() << std::endl;
+            // std::cout << "Processing interaction: Src partition: " << src->partition_id() << ", Dst partition: " << dst->partition_id() << std::endl;
             processInteraction(src, dst, edges);
+            buffer_->MarkInteraction(interaction);
         }
 
         // Apply Phase

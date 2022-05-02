@@ -57,21 +57,22 @@ public:
   void SetupClientStubs();
   std::vector<graph::VertexPartition*>& get_partitions();
   std::optional<WorkUnit> GetWorkUnit();
-  void ProduceInteractions(); // TODO: to be removed
+  void ProduceInteractions();
   graph::VertexPartition* SendPartition(int partition_id);
   void ClearPartition(int partition_id);
+  void MarkInteraction(WorkUnit interaction);
 
 private:
-  int GetStablePartitionId();
+  int GetStablePartitionId(int round);
   void ReleasePartition(int super_partition_id, int partition_id);
   void CheckAndReleaseOutgoingPartition(int outgoing_super_partition_id, int stable_super_partition_id, int partition_id);
   void AddPartitionToBuffer(graph::VertexPartition* partition);
   
   bool IsEpochComplete();
   bool IsRoundComplete();
-  void MarkInteraction(WorkUnit interaction);
   void FillPartitions();
   void AddInteractions(graph::VertexPartition* partition);
+  void PrintInteractionMatrix();
   
   graph::VertexPartition* InitPartition(int partition_id, int partition_start, int partition_end);
   void InitSuperPartition(std::vector<graph::VertexPartition*>& super_partition, int super_partition_id);
@@ -82,6 +83,7 @@ private:
   int num_workers_;
   int partition_size_;
   int current_round_;
+  int fill_round_;
   int buffer_size_;
   std::vector<std::vector<std::pair<int, int>>> matchings_;
   std::vector<std::vector<std::pair<int, int>>> plan_;
@@ -94,12 +96,14 @@ private:
   std::vector<graph::VertexPartition*> partitions_second_half_;
   std::vector<graph::VertexPartition*> vertex_partitions_;
   std::unordered_map<int, graph::VertexPartition*> done_partitions_;
+  std::vector<int> partitions_fetched_;
   std::vector<std::vector<bool>> interactions_matrix_;
   std::vector<std::pair<int, int>> super_partitiion_order_;
   std::vector<std::string> server_addresses_;
   std::vector<std::unique_ptr<graph::PartitionService::Stub>> client_stubs_;
   std::queue<WorkUnit> interaction_queue_;
   std::condition_variable cv_;
+  std::condition_variable cv_round_;
   std::mutex mutex_;
   std::condition_variable cv_send_;
   std::mutex mutex_send_;

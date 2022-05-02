@@ -102,10 +102,10 @@ void DistributedBuffer::LoadInitialPartitions() {
     vertex_partitions_[i + B] = partitions_second_half_[i];
   }
 
-  std::cout << "Initial Partitions loaded." << std::endl;
-  for(int i = 0; i < capacity_; i++) {
-    std::cout << "Vertex partition id: " << vertex_partitions_[i]->partition_id() << std::endl;
-  }
+  // std::cout << "Initial Partitions loaded." << std::endl;
+  // for(int i = 0; i < capacity_; i++) {
+  //   std::cout << "Vertex partition id: " << vertex_partitions_[i]->partition_id() << std::endl;
+  // }
 
   // Produce initial interactions
   ProduceInteractions();
@@ -116,12 +116,11 @@ void DistributedBuffer::LoadInitialPartitions() {
   }));
 }
 
-// TODO: Remove this eventually. It's just for testing.
 void DistributedBuffer::ProduceInteractions() {
   for(int i = 0; i < capacity_; i++) {
     for(int j = 0; j < capacity_; j++) {
       WorkUnit interaction(vertex_partitions_[i], vertex_partitions_[j], &interaction_edges_[i][j]);
-      std::cout << "Inserting interaction: (" << i << ", " << j << ") to queue." << std::endl;
+      // std::cout << "Inserting interaction: (" << vertex_partitions_[i]->partition_id() << ", " << vertex_partitions_[j]->partition_id() << ") to queue." << std::endl;
       interaction_queue_.push(interaction);
     }
   }

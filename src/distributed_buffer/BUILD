@@ -3,7 +3,7 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
   name = "distributed_buffer",
-  srcs = ["distributed_buffer.cc", "init_partition.cc", "util.cc", "partition.cc"],
+  srcs = ["distributed_buffer.cc", "init_partition.cc", "util.cc", "partition.cc", "partition_service.cc"],
   hdrs = ["distributed_buffer.h"],
   deps = [
     "//protos:graph_cc_grpc",

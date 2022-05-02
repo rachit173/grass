@@ -1,4 +1,5 @@
 bazel-*
 *.json
+*.log
 perf_log/
 src/test/
