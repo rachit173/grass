@@ -1,6 +1,13 @@
 #include "shortest_path.h"
 
-ShortestPath::ShortestPath(std::string& filename, int64_t src_vtx_id) : BaseApp<double, double> (filename), src_vtx_id_(src_vtx_id) {}
+int64_t ShortestPath::src_vtx_id_ = 0;
+
+ShortestPath::ShortestPath(std::string& filename, int64_t src_vtx_id) : BaseApp<double, double> (filename) {
+    this->Graph::set_init_func(&ShortestPath::init);
+    this->Graph::set_gather_func(&ShortestPath::gather);
+    this->Graph::set_apply_func(&ShortestPath::apply);
+    this->src_vtx_id_ = src_vtx_id;
+}
 
 void ShortestPath::init(Vertex<double, double> & vertex) {
     double init_dist = 1e9;

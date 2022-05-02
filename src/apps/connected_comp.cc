@@ -1,6 +1,10 @@
 #include "connected_comp.h"
 
-ConnectedComponents::ConnectedComponents(std::string & graph_file) : BaseApp<double, double>(graph_file) {}
+ConnectedComponents::ConnectedComponents(std::string & graph_file) : BaseApp<double, double>(graph_file) {
+    this->Graph::set_init_func(&ConnectedComponents::init);
+    this->Graph::set_gather_func(&ConnectedComponents::gather);
+    this->Graph::set_apply_func(&ConnectedComponents::apply);
+}
 
 void ConnectedComponents::init(Vertex<double, double> & vertex) { 
     double init_val = vertex.get_id();
