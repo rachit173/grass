@@ -11,15 +11,18 @@ protected:
     BaseApp(std::string& graph_file, bool weighted_edges = false): Graph<R, A>(graph_file, weighted_edges) {}
 
 
-///////////////////////// Methods to be implemented ///////////////////////////////
-//  void init(Vertex<R, A> & vertex);
-//  void gather(Vertex<R, A> & src, Vertex<R, A>& dst, const Edge& edge);
-//  void apply(Vertex<R, A> & vertex);
+///////////////////////// Static Methods to be implemented ///////////////////////////////
+//  static void init(Vertex<R, A> & vertex);
+//  static void gather(Vertex<R, A> & src, Vertex<R, A>& dst, const Edge& edge);
+//  static void apply(Vertex<R, A> & vertex);
+//  static variables (if any)
 ///////////////////////////////////////////////////////////////////////////////////
 
 
-
 //////////////////////////////// APIs available ///////////////////////////////////
+//  void set_init_func(init_func);
+//  void set_gather_func(gather_func);
+//  void set_apply_func(apply_func);
 //  void initialize();
 //  void startProcessing(const int &num_iters);
 //  void collectResults();
