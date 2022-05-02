@@ -4,28 +4,6 @@
 #include <thread>
 using namespace std;
 typedef vector<vector<pair<int, int>>> vvii;
-TEST(DistributedBufferTest, CheckServersSetup) {
-  // std::thread t1([&]() {
-  //   DistributedBufferConfig config;
-  //   config.self_rank = 0;
-  //   config.num_partitions = 8;
-  //   config.capacity = 4;
-  //   config.num_workers = 2;
-  //   config.server_addresses = {"localhost:50051", "localhost:50052"};
-  //   DistributedBuffer buffer(config);
-  // });
-  // std::thread t2([&]() {
-  //   DistributedBufferConfig config;
-  //   config.self_rank = 1;
-  //   config.num_partitions = 8;
-  //   config.capacity = 4;
-  //   config.num_workers = 2;
-  //   config.server_addresses = {"localhost:50051", "localhost:50052"};
-  //   DistributedBuffer buffer(config);
-  // });  
-  // t1.join();
-  // t2.join();
-}
 
 void PrintMatchings(const vvii& matchings) {
   for (int  i = 0; i < matchings.size(); i++) {
@@ -141,6 +119,16 @@ void PrintMachineState(const vvii& machine_state) {
     cout << "\n";
   }
 }
+
+void PrintPartitionToBeSent(const vector<vector<int>>& partition_to_be_sent) {
+  for (int i = 0; i < partition_to_be_sent.size(); i++) {
+    cout << "Round " << i << ": " << endl;
+    for (int j = 0; j < partition_to_be_sent[i].size(); j++) {
+      cout << "Machine " << j << " sends partition " << partition_to_be_sent[i][j] << endl;
+    }
+  }
+}
+
 TEST(DistributedBufferTest, GeneratePlanK3) {
   vvii matchings;
   int k = 3;
@@ -150,9 +138,11 @@ TEST(DistributedBufferTest, GeneratePlanK3) {
   // EXPECT_EQ(VerifyMatchings(n, matchings), true);
   vvii plan;
   vvii machine_state;
-  GeneratePlan(matchings, plan, machine_state);
+  vector<vector<int>> partition_to_be_sent;
+  GeneratePlan(matchings, plan, machine_state, partition_to_be_sent);
   PrintPlan(plan);
   PrintMachineState(machine_state);
+  PrintPartitionToBeSent(partition_to_be_sent);
   EXPECT_EQ(VerifyPlan(n, machine_state), true);
 }
 
@@ -165,8 +155,10 @@ TEST(DistributedBufferTest, GeneratePlanK104) {
   // EXPECT_EQ(VerifyMatchings(n, matchings), true);
   vvii plan;
   vvii machine_state;
+  vector<vector<int> partition_to_be_sent;
   GeneratePlan(matchings, plan, machine_state);
   PrintPlan(plan);
   PrintMachineState(machine_state);
+  PrintPartitionToBeSent(partitions_to_be_sent);
   EXPECT_EQ(VerifyPlan(n, machine_state), true);
 }
