@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <functional>
 #include <grpcpp/grpcpp.h>
 #include "protos/graph.grpc.pb.h"
 
@@ -12,8 +13,11 @@
 
 template <typename R, typename A>
 class Graph {
-
 public:
+    typedef std::function<void (Vertex<R,A>&)> init_func_t;
+    typedef std::function<void (Vertex<R,A>&, Vertex<R,A>&, const Edge&)> gather_func_t;
+    typedef std::function<void (Vertex<R,A>&)> apply_func_t;
+
     Graph(std::string& graph_file, bool weighted_edges = false);
     void initialize();
     void startProcessing(const int &num_iters);
@@ -22,9 +26,9 @@ public:
     std::vector<Edge>& get_edges();
 
 protected:
-    virtual void init(Vertex<R,A> & vertex) = 0;
-    virtual void gather(Vertex<R,A>& src, Vertex<R,A>& dst, const Edge& edge) = 0;
-    virtual void apply(Vertex<R,A>& vertex) = 0;
+    void set_init_func(init_func_t init_func);
+    void set_gather_func(gather_func_t gather_func);
+    void set_apply_func(apply_func_t apply_func);
 
 private:
     int64_t num_vertices_;
@@ -34,6 +38,9 @@ private:
     std::vector<Edge> edges_;
     std::vector<graph::VertexPartition> vertex_partitions_;
     std::vector<std::vector<graph::InteractionEdges>> interaction_edges_;
+    init_func_t init_func_;
+    gather_func_t gather_func_;
+    apply_func_t apply_func_;
     void makePartitions();
     void initializePartitions();
     void processInteraction(graph::VertexPartition *src_partition, graph::VertexPartition *dst_partition, const graph::InteractionEdges *directed_edges);

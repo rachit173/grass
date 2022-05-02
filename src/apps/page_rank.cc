@@ -2,7 +2,11 @@
 
 using graph::Double;
 
-PageRank::PageRank(std::string & graph_file) : BaseApp<double, double>(graph_file) {}
+PageRank::PageRank(std::string & graph_file) : BaseApp<double, double>(graph_file) {
+    this->Graph::set_init_func(&PageRank::init);
+    this->Graph::set_gather_func(&PageRank::gather);
+    this->Graph::set_apply_func(&PageRank::apply);
+}
 
 void PageRank::init(Vertex<double, double> & vertex) { 
     double init_val = 1.0;

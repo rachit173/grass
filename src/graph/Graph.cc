@@ -124,7 +124,7 @@ void Graph<R, A>::initializePartitions() {
         for (int j = 0; j < vertex_partitions_[i].vertices().size(); j++) {
             graph::Vertex* vertex = vertex_partitions_[i].mutable_vertices(j);
             Vertex<R, A> v(vertex);
-            init(v);
+            init_func_(v);
         }
     }
 }
@@ -156,7 +156,7 @@ void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, grap
 
         int src_vertex_id = edge->src(), dst_vertex_id = edge->dst();
         edge_obj.set_edge(edge);
-        gather(src_vertices[src_vertex_id % partition_size], dst_vertices[dst_vertex_id % partition_size], edge_obj);
+        gather_func_(src_vertices[src_vertex_id % partition_size], dst_vertices[dst_vertex_id % partition_size], edge_obj);
     }
 }
 
@@ -165,8 +165,23 @@ void Graph<R, A>::applyPhase(graph::VertexPartition& partition) {
     for (int i = 0; i < partition.vertices().size(); i++) {
         graph::Vertex* vertex = partition.mutable_vertices(i);
         Vertex<R, A> v(vertex);
-        apply(v);
+        apply_func_(v);
     }
+}
+
+template <typename R, typename A>
+void Graph<R, A>::set_init_func(init_func_t init_func) {
+    init_func_ = init_func;
+}
+
+template <typename R, typename A>
+void Graph<R, A>::set_gather_func(gather_func_t gather_func) {
+    gather_func_ = gather_func;
+}
+
+template <typename R, typename A>
+void Graph<R, A>::set_apply_func(apply_func_t apply_func) {
+    apply_func_ = apply_func;
 }
 
 template class Graph<double, double>;
