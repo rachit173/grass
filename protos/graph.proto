@@ -45,6 +45,7 @@ message Edge {
 
 message VertexPartition {
   repeated Vertex vertices = 1;
+  int32 partition_id = 2;
 }
 
 message InteractionEdges {
@@ -56,3 +57,16 @@ message Interaction {
   VertexPartition dst = 2;
   InteractionEdges directed_edges = 3;
 }
+
+message PartitionRequest {
+  int32 partition_id = 1;
+}
+
+message PartitionReply {
+  int32 partition_id = 1;
+}
+
+service PartitionService {
+  rpc GetPartition (PartitionRequest) returns (PartitionReply) {}
+};
+
