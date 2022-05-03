@@ -11,4 +11,7 @@ cc_library(
       "@spdlog",
       "//src/distributed_buffer:distributed_buffer"
     ],
+    copts = [
+      "-std=c++17"
+    ]
 )

@@ -8,7 +8,7 @@ using graph::Double;
 
 class ConnectedComponents : public BaseApp<double, double> {
 public:
-    ConnectedComponents(std::string& graph_file);
+    ConnectedComponents(DistributedBufferConfig config, std::string& graph_file);
     static void init(Vertex<double, double> & vertex);
     static void gather(Vertex<double, double> & src, Vertex<double, double>& dst, const Edge& edge);
     static void apply(Vertex<double, double> & vertex);

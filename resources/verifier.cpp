@@ -196,6 +196,16 @@ vector<double> ConnectedComponents(Graph &graph) {
     return components_new;
 }
 
+// 4. Degree
+vector<double> Degree(Graph& graph) {
+    vector<double> degree(graph.num_vertices_, 0);
+    for(auto edge: graph.edges_) {
+        degree[edge.src] += 1;
+        degree[edge.dst] += 1;
+    }
+    return degree;
+}
+
 int main(int argc, char* argv[])
 {
     if (argc < 4) {
@@ -226,6 +236,9 @@ int main(int argc, char* argv[])
     } 
     else if(application == "connected-comp"){
         vector<double> results = ConnectedComponents(graph);
+        writeResults(results, output_filepath);
+    } else if(application == "degree") {
+        vector<double> results = Degree(graph);
         writeResults(results, output_filepath);
     }
     else{
