@@ -27,6 +27,14 @@ class Vertex {
         return this->vertex_->degree().out_degree();
     }
 
+    void set_indegree(int64_t in_degree) {
+        this->vertex_->mutable_degree()->set_in_degree(in_degree);
+    }
+
+    void set_outdegree(int64_t out_degree) {
+        this->vertex_->mutable_degree()->set_out_degree(out_degree);
+    }
+
     void set_accumulator(A& acc) {
         this->vertex_->mutable_state()->set_accumulator(acc);
     }

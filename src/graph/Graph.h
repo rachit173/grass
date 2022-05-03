@@ -10,6 +10,7 @@
 
 #include "Vertex.h"
 #include "Edge.h"
+#include "src/distributed_buffer/distributed_buffer.h"
 
 template <typename R, typename A>
 class Graph {
@@ -18,7 +19,7 @@ public:
     typedef std::function<void (Vertex<R,A>&, Vertex<R,A>&, const Edge&)> gather_func_t;
     typedef std::function<void (Vertex<R,A>&)> apply_func_t;
 
-    Graph(std::string& graph_file, bool weighted_edges = false);
+    Graph(DistributedBufferConfig config, std::string& graph_file, bool weighted_edges = false);
     void initialize();
     void startProcessing(const int &num_iters);
     void collectResults();
@@ -36,11 +37,12 @@ private:
     int num_partitions_;
     std::vector< Vertex<R,A> > vertices_;
     std::vector<Edge> edges_;
-    std::vector<graph::VertexPartition> vertex_partitions_;
+    std::vector<graph::VertexPartition*> vertex_partitions_;
     std::vector<std::vector<graph::InteractionEdges>> interaction_edges_;
     init_func_t init_func_;
     gather_func_t gather_func_;
     apply_func_t apply_func_;
+    DistributedBuffer* buffer_;
     void makePartitions();
     void initializePartitions();
     void processInteraction(graph::VertexPartition *src_partition, graph::VertexPartition *dst_partition, const graph::InteractionEdges *directed_edges);
