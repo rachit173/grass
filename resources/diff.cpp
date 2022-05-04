@@ -1,5 +1,12 @@
 #include <bits/stdc++.h>
+#include <dirent.h>
+#include <errno.h>
 using namespace std;
+
+// extract the first word from each line and sort using it
+bool comp(const string &a, const string &b) {
+    return stoi(a.substr(0, a.find(" "))) < stoi(b.substr(0, b.find(" ")));
+};
 
 void read_to_vector_and_sort(string input_file_path, vector<string> &results) {
     ifstream input_file(input_file_path);
@@ -11,12 +18,6 @@ void read_to_vector_and_sort(string input_file_path, vector<string> &results) {
     while (getline(input_file, line)) {
         results.push_back(line);
     }
-
-    // extract the first word from each line and sort using it
-    auto comp = [](const string &a, const string &b) {
-        return stoi(a.substr(0, a.find(" "))) < stoi(b.substr(0, b.find(" ")));
-    };
-
     sort(results.begin(), results.end(), comp);
 }
 
@@ -30,6 +31,25 @@ void write_to_sorted_file(string input_file_path, vector<string> &results) {
         output_file << result << endl;
     }
     output_file.close();
+}
+
+vector<string> get_partition_filenames(string dir, string reqd_filename) {
+    DIR *dp;
+    struct dirent *dirp;
+    vector<string> files = {};
+    if((dp = opendir(dir.c_str())) == NULL) {
+        cout << "Error(" << errno << ") opening " << dir << endl;
+        exit(1);
+    }
+    while ((dirp = readdir(dp)) != NULL) {
+        string filename = dirp->d_name;
+        if(filename.find(reqd_filename + "_") != string::npos && filename.find("_sorted") == string::npos) {
+            filename = dir + "/" + filename;
+            files.push_back(filename);
+        }
+    }
+    closedir(dp);
+    return files;
 }
 
 int main(int argc, char** argv) {
@@ -46,9 +66,14 @@ int main(int argc, char** argv) {
     string actual_results_filepath_sorted = actual_results_filepath + "_sorted";
 
     vector<string> expected_results, actual_results;
-
+    vector<string> partition_filenames = get_partition_filenames(base_dir + application + "/actual_results/", filename);
+    for(auto partition_filename: partition_filenames){
+        vector<string> tmp = {};
+        read_to_vector_and_sort(partition_filename, tmp);
+        actual_results.insert(actual_results.end(), tmp.begin(), tmp.end());
+    }
+    sort(actual_results.begin(), actual_results.end(), comp);
     read_to_vector_and_sort(expected_results_filepath, expected_results);
-    read_to_vector_and_sort(actual_results_filepath, actual_results);
     write_to_sorted_file(actual_results_filepath_sorted, actual_results);
 
     string expected_result_line;

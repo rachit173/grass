@@ -1,17 +1,16 @@
 #!/bin/bash
 
-ITERS=$2
-
 if [ $# -ne 2 ]; then
-    echo "Usage: $0 <application> <iterations>"
+    echo "Usage: $0 <rank> <config filepath>"
     exit 1
 fi
+
+RANK=$1
+CONFIG_FILE=$2
 
 FLAME_DIR=/mnt/Work/FlameGraph
 BASE_DIR=/mnt/Work/grass
 PERF_LOG_DIR=$BASE_DIR/perf_log
-RESOURCES_DIR=$BASE_DIR/resources
-OUTPUT_DIR=$BASE_DIR/resources/$APP
 
 
 mkdir -p $PERF_LOG_DIR
@@ -20,7 +19,7 @@ echo "Build"
 bazel build //src:run_app --copt=-O3
 
 echo "Starting application"
-bazel run //src:run_app --copt=-O3 -- $RESOURCES_DIR $OUTPUT_DIR $ITERS &
+bazel run //src:run_app --copt=-O3 -- $RANK $CONFIG_FILE &
 appPid=$!
 
 echo "Recording..."

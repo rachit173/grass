@@ -12,7 +12,7 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
-    spdlog::set_level(spdlog::level::trace);
+    spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
 
     if (argc < 2) {
@@ -42,6 +42,7 @@ int main(int argc, char* argv[]) {
     buffer_config.num_workers = stoi(config["buffer.num_workers"]);
     buffer_config.server_addresses = split_addresses(config["buffer.server_addresses"]);
 
+    auto start = std::chrono::high_resolution_clock::now();
     DistributedBuffer* buffer = new DistributedBuffer(buffer_config, filepath);
     Degree* degree = new Degree(buffer);
     PageRank* pagerank = new PageRank(buffer);
@@ -49,7 +50,6 @@ int main(int argc, char* argv[]) {
     // app = new ShortestPath(buffer, 1);
     // app = new ConnectedComponents(buffer);
 
-    auto start = std::chrono::high_resolution_clock::now();
 
     degree->initialize();
     degree->startProcessing(1);

@@ -58,7 +58,6 @@ public:
   void WaitForEpochCompletion();
   // Used by Partition service
   graph::VertexPartition* SendPartition(int partition_id);
-  void NotifyPartitionSent();
   
 private:
   void StartServer();
@@ -80,6 +79,7 @@ private:
   void InitSuperPartition(std::vector<graph::VertexPartition*>& super_partition, int super_partition_id);
   std::pair<int, int> GetPartitionRange(int super_partition_id);
   void ProduceInteractions();
+  void NotifyPartitionSent();
 
   int64_t num_vertices_;
   int64_t num_edges_;
