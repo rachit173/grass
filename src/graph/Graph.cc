@@ -1,40 +1,34 @@
 #include "Graph.h"
-#include <spdlog/spdlog.h>
-
-using graph::Double;
-using graph::Int32;
 
 template <typename R, typename A>
-Graph<R, A>::Graph(DistributedBufferConfig config, std::string& graph_file, bool weighted_edges) {
-    num_partitions_ = config.num_partitions;
-    buffer_ = new DistributedBuffer(config);
-    
-    // Populate vertices and edges
-    std::vector<graph::Edge*> edges;
-    num_vertices_ = buffer_->LoadInteractionEdges(graph_file, weighted_edges, edges);
-    // Apply wrapper to all edges
-    for(auto edge: edges) {
-        edges_.push_back(Edge(edge));
-    }
-    num_edges_ = edges_.size();
-    spdlog::info("Graph loaded with {} vertices and {} edges", num_vertices_, num_edges_);
-    makePartitions();
+Graph<R, A>::Graph(DistributedBuffer* buffer) {
+    buffer_ = buffer;
+    vertex_partitions_ = buffer_->GetPartitions();
 }
 
 template <typename R, typename A>
 void Graph<R, A>::initialize() {
-    initializePartitions();
+    vertex_partitions_ = buffer_->GetPartitions();
+    int num_local_partitions = vertex_partitions_.size();
+    for (int i = 0; i < num_local_partitions; i++) {
+        for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {
+            graph::Vertex* vertex = vertex_partitions_[i]->mutable_vertices(j);
+            Vertex<R, A> v(vertex);
+            init_func_(v);
+        }
+    }
 }
 
 template <typename R, typename A>
 void Graph<R, A>::startProcessing(const int &num_iters) {
     for (int iter = 0; iter < num_iters; iter++) {
         spdlog::debug("Iteration: {}", iter);
+        buffer_->InitEpoch();
         // Gather Phase
         while(true){
             std::optional<WorkUnit> opt_interaction = buffer_->GetWorkUnit();
             if(opt_interaction == std::nullopt){
-                spdlog::debug("Empty work unit. Assume gather phase is complete.");
+                spdlog::debug("Gather phase complete.");
                 break;
             }
             
@@ -75,38 +69,14 @@ void Graph<R, A>::collectResults() {
 template <typename R, typename A>
 std::vector< Vertex<R, A> >& Graph<R, A>::get_vertices() {
     return vertices_;
-} 
-
-template <typename R, typename A>
-std::vector<Edge>& Graph<R, A>::get_edges() {
-    return edges_;
-}
-
-template <typename R, typename A>
-void Graph<R, A>::makePartitions() {
-    spdlog::trace("Load initial partitions.");
-    buffer_->LoadInitialPartitions();
-    vertex_partitions_ = buffer_->GetPartitions();
-}
-
-template <typename R, typename A>
-void Graph<R, A>::initializePartitions() {
-    int num_local_partitions = vertex_partitions_.size();
-    for (int i = 0; i < num_local_partitions; i++) {
-        for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {
-            graph::Vertex* vertex = vertex_partitions_[i]->mutable_vertices(j);
-            Vertex<R, A> v(vertex);
-            init_func_(v);
-        }
-    }
 }
 
 template <typename R, typename A>
 void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, graph::VertexPartition *dst_partition, const graph::InteractionEdges *directed_edges) {
-    int partition_size = (int)(ceil((double) num_vertices_ / (double)num_partitions_));
     int64_t num_interaction_edges = directed_edges->edges().size();
-    
     std::vector<Vertex<R,A>> src_vertices, dst_vertices;
+    // Expose partition size from buffer
+    int partition_size = buffer_->GetPartitionSize();
     for(int64_t i = 0; i < partition_size; i++) {
         if(i < src_partition->vertices().size()) {
             graph::Vertex* src = src_partition->mutable_vertices(i);

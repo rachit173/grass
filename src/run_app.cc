@@ -42,32 +42,42 @@ int main(int argc, char* argv[]) {
     buffer_config.num_workers = stoi(config["buffer.num_workers"]);
     buffer_config.server_addresses = split_addresses(config["buffer.server_addresses"]);
 
-    PageRank* app;
+    DistributedBuffer* buffer = new DistributedBuffer(buffer_config, filepath);
+    Degree* degree = new Degree(buffer);
+    PageRank* pagerank = new PageRank(buffer);
 
-    app = new Degree(buffer_config, filepath);
-    // app = new PageRank(buffer_config, filepath);
-    // app = new ShortestPath(buffer_config, filepath, 1);
-    // app = new ConnectedComponents(buffer_config, filepath);
+    // app = new ShortestPath(buffer, 1);
+    // app = new ConnectedComponents(buffer);
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    app->initialize();
-    app->startProcessing(1);
-    app->collectResults();
+    degree->initialize();
+    degree->startProcessing(1);
+
+    pagerank->initialize();
+    pagerank->startProcessing(iterations);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    spdlog::info("Total time: {} ms", duration.count());
+    spdlog::info("Execution time: {} ms", duration.count());
     
-    auto vertices = app->get_vertices();
-    auto edges = app->get_edges();
+    auto collect_result_start = std::chrono::high_resolution_clock::now();
+    pagerank->collectResults();
+    auto vertices = pagerank->get_vertices();
+    auto collect_result_end = std::chrono::high_resolution_clock::now();
+    auto collect_result_duration = std::chrono::duration_cast<std::chrono::milliseconds>(collect_result_end - collect_result_start);
+    spdlog::info("Collect result time: {} ms", collect_result_duration.count());
 
     std::ofstream outfile;
     filename = filename + "_" + std::to_string(buffer_config.self_rank);
     outfile.open(outdir + "/actual_results/" + filename);
 
+    auto write_start = std::chrono::high_resolution_clock::now();
     for (auto &vertex: vertices) {
         double result = vertex.get_result();
         outfile << vertex.get_id() << " " << result << std::endl;
     }
+    auto write_end = std::chrono::high_resolution_clock::now();
+    auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start);
+    spdlog::info("Write time: {} ms", write_duration.count());
 }

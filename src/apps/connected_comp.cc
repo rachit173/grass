@@ -1,6 +1,6 @@
 #include "connected_comp.h"
 
-ConnectedComponents::ConnectedComponents(DistributedBufferConfig config, std::string & graph_file) : BaseApp<double, double>(config, graph_file) {
+ConnectedComponents::ConnectedComponents(DistributedBuffer* buffer) : BaseApp<double, double>(buffer) {
     this->Graph::set_init_func(&ConnectedComponents::init);
     this->Graph::set_gather_func(&ConnectedComponents::gather);
     this->Graph::set_apply_func(&ConnectedComponents::apply);

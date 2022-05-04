@@ -14,6 +14,7 @@
 #include <fstream>
 #include <condition_variable>
 #include <spdlog/spdlog.h>
+#include <assert.h>
 
 #include "matching_generator.h"
 
@@ -45,24 +46,28 @@ private:
 
 class DistributedBuffer {
 public:
-  explicit DistributedBuffer(DistributedBufferConfig config); 
+  explicit DistributedBuffer(DistributedBufferConfig config, std::string& graph_filepath, bool weighted_edges = false);
+  // Used by Graph
+  void InitEpoch();
+  std::optional<WorkUnit> GetWorkUnit();
+  void MarkInteraction(WorkUnit interaction);
+  std::vector<graph::VertexPartition*>& GetPartitions() { return vertex_partitions_; }
+  int64_t GetPartitionSize() { return partition_size_; }
+  int64_t GetNumVertices() { return num_vertices_; }
+  int64_t GetNumEdges() { return num_edges_; }
+  void WaitForEpochCompletion();
+  // Used by Partition service
+  graph::VertexPartition* SendPartition(int partition_id);
+  void NotifyPartitionSent();
+  
+private:
   void StartServer();
-  void StartBuffer();
-  int LoadInteractionEdges(std::string& graph_file, bool weighted_edges, std::vector<graph::Edge*>& edges);
+  void PingAll();
+  void LoadInteractionEdges(std::string& graph_file, bool weighted_edges);
   void LoadInitialPartitions();
   void SetupClientStubs();
-  std::vector<graph::VertexPartition*>& GetPartitions();
-  std::optional<WorkUnit> GetWorkUnit();
-  void ProduceInteractions();
-  graph::VertexPartition* SendPartition(int partition_id);
-  void ClearPartition(int partition_id);
-  void MarkInteraction(WorkUnit interaction);
-  void NotifyPartitionSent();
-  void WaitForEpochCompletion();
-
-private:
   int GetStablePartitionId(int round);
-  void ReleasePartition(int super_partition_id, int partition_id);
+  void ReleasePartition(int partition_id);
   void CheckAndReleaseOutgoingPartition(int outgoing_super_partition_id, int stable_super_partition_id, int partition_id);
   void AddPartitionToBuffer(graph::VertexPartition* partition);
   bool IsEpochComplete();
@@ -74,7 +79,12 @@ private:
   graph::VertexPartition* InitPartition(int partition_id, int partition_start, int partition_end);
   void InitSuperPartition(std::vector<graph::VertexPartition*>& super_partition, int super_partition_id);
   std::pair<int, int> GetPartitionRange(int super_partition_id);
+  void ProduceInteractions();
 
+  int64_t num_vertices_;
+  int64_t num_edges_;
+  int num_iterations_;
+  int rounds_per_iteration_;
   int self_rank_;
   int num_partitions_;
   int capacity_;
@@ -83,6 +93,7 @@ private:
   int current_round_;
   int fill_round_;
   int buffer_size_;
+  bool epoch_complete_;
   std::vector<std::vector<std::pair<int, int>>> matchings_;
   std::vector<std::vector<std::pair<int, int>>> plan_;
   std::vector<std::vector<std::pair<int, int>>> machine_state_;
@@ -101,11 +112,11 @@ private:
   std::vector<std::unique_ptr<graph::PartitionService::Stub>> client_stubs_;
   std::queue<WorkUnit> interaction_queue_;
   std::condition_variable cv_;
-  std::condition_variable cv_round_;
   std::mutex mutex_;
   std::condition_variable cv_send_;
   std::mutex mutex_send_;
   std::condition_variable cv_epoch_completion_;
   std::mutex mutex_epoch_completion_;
+  std::mutex buffer_mutex_;
 };
 #endif // DISTRIBUTED_BUFFER_H

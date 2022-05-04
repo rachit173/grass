@@ -2,17 +2,18 @@
 
 using namespace std;
 
-int DistributedBuffer::LoadInteractionEdges(std::string& graph_file, bool weighted_edges, std::vector<graph::Edge*>& edges) {
+void DistributedBuffer::LoadInteractionEdges(std::string& graph_file, bool weighted_edges) {
   // Open file
   std::ifstream graph_file_stream(graph_file);
-  int num_vertices;
   if (!graph_file_stream.is_open()) {
     spdlog::error("Could not open file {}. Exiting...", graph_file);
     exit(1);
   }
 
-  graph_file_stream >> num_vertices;
-  partition_size_ = (int)(ceil((double) num_vertices / (double)num_partitions_));
+  interaction_edges_ = std::vector<std::vector<graph::InteractionEdges>>(num_partitions_, std::vector<graph::InteractionEdges>(num_partitions_));
+  
+  graph_file_stream >> num_vertices_;
+  partition_size_ = (int)(ceil((double) num_vertices_ / (double)num_partitions_));
   spdlog::info("Partition size: {}", partition_size_);
   int src, dst;
   double weight = 1.0;
@@ -26,15 +27,14 @@ int DistributedBuffer::LoadInteractionEdges(std::string& graph_file, bool weight
         graph_file_stream >> weight;
     }
     edge->set_weight(weight);
-    edges.push_back(edge);
 
     // Put edges in Interaction edge buckets
     int src_partition = src / partition_size_, dst_partition = dst / partition_size_;
     graph::Edge *interEdge = interaction_edges_[src_partition][dst_partition].add_edges();
     *interEdge = *edge;
+    num_edges_++;
   }
   graph_file_stream.close();
-  return num_vertices;
 }
 
 graph::VertexPartition* DistributedBuffer::InitPartition(int partition_id, int partition_start, int partition_end) {
@@ -54,7 +54,7 @@ void DistributedBuffer::InitSuperPartition(std::vector<graph::VertexPartition*>&
   int B = capacity_/2;
   for(int i = 0; i < B; i++) {
     int partition_id = super_partition_id * B + i;
-    int partition_start = partition_id * partition_size_, partition_end = (partition_id + 1) * partition_size_; // TODO: Put cap on size at num_vertices_?
+    int partition_start = partition_id * partition_size_, partition_end = std::min(num_vertices_, (int64_t)( (partition_id + 1) * partition_size_) ); // Put cap on end at num_vertices_
     super_partition[i] = InitPartition(partition_id, partition_start, partition_end); // [partition_start, partition_end)
     buffer_size_++; // Track buffer size
   }
@@ -64,6 +64,8 @@ void DistributedBuffer::LoadInitialPartitions() {
   int left_super_partition = (2*self_rank_); // machine_state_[0][self_rank_].first;
   int right_super_partition = (2*self_rank_+1); // machine_state_[0][self_rank_].second;
   int B = capacity_/2;
+  partitions_first_half_ = std::vector<graph::VertexPartition*>(capacity_/2, nullptr);
+  partitions_second_half_ = std::vector<graph::VertexPartition*>(capacity_/2, nullptr);
 
   InitSuperPartition(partitions_first_half_, left_super_partition);
   InitSuperPartition(partitions_second_half_, right_super_partition);
@@ -74,18 +76,10 @@ void DistributedBuffer::LoadInitialPartitions() {
     vertex_partitions_[i] = partitions_first_half_[i];
     vertex_partitions_[i + B] = partitions_second_half_[i];
   }
-
-  // Produce initial interactions
-  ProduceInteractions();
-
-  // Start thread for filling the interactions queue
-  spdlog::debug("Starting populate interactions thread");
-  threads_.push_back(std::thread([&](){
-    PopulatePartitions();
-  }));
 }
 
 void DistributedBuffer::ProduceInteractions() {
+  std::unique_lock buffer_lock(buffer_mutex_);
   for(int i = 0; i < capacity_; i++) {
     for(int j = 0; j < capacity_; j++) {
       graph::VertexPartition* src = vertex_partitions_[i];
@@ -95,8 +89,4 @@ void DistributedBuffer::ProduceInteractions() {
       interaction_queue_.push(interaction);
     }
   }
-}
-
-std::vector<graph::VertexPartition*>& DistributedBuffer::GetPartitions() {
-  return vertex_partitions_;
 }

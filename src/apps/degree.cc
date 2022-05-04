@@ -1,6 +1,6 @@
 #include "degree.h"
 
-Degree::Degree(DistributedBufferConfig config, std::string& graph_file) : PageRank(config, graph_file) {
+Degree::Degree(DistributedBuffer* buffer) : BaseApp<double, double>(buffer) {
     this->Graph::set_init_func(&Degree::init);
     this->Graph::set_gather_func(&Degree::gather);
     this->Graph::set_apply_func(&Degree::apply);
