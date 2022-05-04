@@ -147,8 +147,11 @@ TEST(DistributedBufferTest, GeneratePlanK3) {
   vvii machine_state;
   vector<vector<int>> partition_to_be_sent;
   GeneratePlan(matchings, plan, machine_state, partition_to_be_sent);
+  cout << "Plan: " << endl;
   PrintPlan(plan);
+  cout << "Machine state: " << endl;
   PrintMachineState(machine_state);
+  cout << "Partition to be sent: " << endl;
   PrintPartitionToBeSent(partition_to_be_sent);
   EXPECT_EQ(VerifyPlan(n, machine_state), true);
 }
