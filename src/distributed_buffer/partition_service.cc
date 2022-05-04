@@ -47,7 +47,7 @@ graph::VertexPartition* DistributedBuffer::SendPartition(int super_partition_id)
     }
 }
 
-void DistributedBuffer::StartBuffer() {
+void DistributedBuffer::PingAll() {
   spdlog::info("Rank: {} - Starting Buffer", self_rank_);
 
   // Ping all other servers
@@ -77,7 +77,7 @@ void DistributedBuffer::StartServer() {
   builder.SetMaxMessageSize(1 * 1024 * 1024 * 1024 + 1); // 1GB  
 
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
-  server->Wait();  
+  server->Wait();
 }
 
 void DistributedBuffer::SetupClientStubs() {

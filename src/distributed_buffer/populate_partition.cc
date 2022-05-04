@@ -1,10 +1,9 @@
 #include "distributed_buffer.h"
 
 void DistributedBuffer::PopulatePartitions() {
-  // Epoch done when all planned partitions are fetched. -> currently terminate thread
-  while(fill_round_ < (int) plan_.size()) {
-    // sleep if the buffer is full
-    while(buffer_size_ == capacity_){
+  while(true) {
+    // sleep if the buffer is full or if all partitions are populated for this epoch
+    while(buffer_size_ == capacity_ || fill_round_ == rounds_per_iteration_){
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
@@ -12,7 +11,6 @@ void DistributedBuffer::PopulatePartitions() {
     int target_machine = plan_[fill_round_][self_rank_].first, target_super_partition = plan_[fill_round_][self_rank_].second;
     spdlog::trace("Populating Round {}: Fetching partition {} from machine {}", fill_round_, target_super_partition, target_machine);
 
-    // Target super partition maybe present in the buffer due to the round number not getting updated
     grpc::ClientContext context;
     graph::PartitionRequest request;
     request.set_super_partition_id(target_super_partition);
@@ -39,13 +37,16 @@ void DistributedBuffer::PopulatePartitions() {
     partitions_fetched_[fill_round_]++;
     if(partitions_fetched_[fill_round_] == (capacity_/2)) {
       fill_round_++;
-      partitions_fetched_[fill_round_] = 0;
+      if(fill_round_ < rounds_per_iteration_) {
+        partitions_fetched_[fill_round_] = 0;
+      }
     }
   }
 }
 
 // Add a new partition to the buffer (vertex_partitions_)
 void DistributedBuffer::AddPartitionToBuffer(graph::VertexPartition* partition) {
+  std::unique_lock<std::mutex> buffer_lock(buffer_mutex_);
   auto comp_partition = [&](graph::VertexPartition* p) {
     return p == nullptr;
   };
@@ -67,6 +68,7 @@ void DistributedBuffer::AddInteractions(graph::VertexPartition* partition) {
   int stable_super_partition_id = GetStablePartitionId(fill_round_ - 1);
   int incoming_partition_id = partition->partition_id();
 
+  std::unique_lock<std::mutex> buffer_lock(buffer_mutex_);
   // Determine which half is the stable super partition
   int start_idx = 0;
   if(vertex_partitions_[start_idx] == nullptr || !BelongsToSuperPartition(vertex_partitions_[start_idx]->partition_id(), stable_super_partition_id)) {

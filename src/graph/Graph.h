@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <functional>
+#include <spdlog/spdlog.h>
 #include <grpcpp/grpcpp.h>
 #include "protos/graph.grpc.pb.h"
 
@@ -19,12 +20,11 @@ public:
     typedef std::function<void (Vertex<R,A>&, Vertex<R,A>&, const Edge&)> gather_func_t;
     typedef std::function<void (Vertex<R,A>&)> apply_func_t;
 
-    Graph(DistributedBufferConfig config, std::string& graph_file, bool weighted_edges = false);
+    Graph(DistributedBuffer* buffer);
     void initialize();
     void startProcessing(const int &num_iters);
     void collectResults();
     std::vector<Vertex<R,A>>& get_vertices();
-    std::vector<Edge>& get_edges();
 
 protected:
     void set_init_func(init_func_t init_func);
@@ -34,17 +34,13 @@ protected:
 private:
     int64_t num_vertices_;
     int64_t num_edges_;
-    int num_partitions_;
     std::vector< Vertex<R,A> > vertices_;
     std::vector<Edge> edges_;
     std::vector<graph::VertexPartition*> vertex_partitions_;
-    std::vector<std::vector<graph::InteractionEdges>> interaction_edges_;
     init_func_t init_func_;
     gather_func_t gather_func_;
     apply_func_t apply_func_;
     DistributedBuffer* buffer_;
-    void makePartitions();
-    void initializePartitions();
     void processInteraction(graph::VertexPartition *src_partition, graph::VertexPartition *dst_partition, const graph::InteractionEdges *directed_edges);
     void applyPhase(graph::VertexPartition& partition);
 };

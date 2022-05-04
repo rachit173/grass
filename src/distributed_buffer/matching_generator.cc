@@ -65,7 +65,10 @@ void GenerateMatchings(int l, int r, vvii& matchings) {
   }
 }
 
-void GeneratePlan(vector<vector<pair<int, int>>>& matchings, vector<vector<pair<int, int>>>& plan, vector<vector<pair<int, int>>>& machine_state, vector<vector<int>>& partition_to_be_sent) {
+void GeneratePlan(vector<vector<pair<int, int>>>& matchings, vector<vector<pair<int, int>>>& plan, 
+                  vector<vector<pair<int, int>>>& machine_state, 
+                  vector<vector<int>>& partition_to_be_sent, 
+                  vector<pair<int, int>> init_state) {
   // matchings -> for this machine a vector<pair> which contains the machine_id, superpartition_id
   int k = matchings[0].size();
   int n = 2*k;
@@ -84,7 +87,10 @@ void GeneratePlan(vector<vector<pair<int, int>>>& matchings, vector<vector<pair<
     auto e = matchings[0][i];
     partition_machine[0][e.first] = i;
     partition_machine[0][e.second] = i;
-    machine_state[0][i] = e;
+    
+    // Get initial machine state as input if provided
+    if(init_state.empty()) machine_state[0][i] = e;
+    else machine_state[0][i] = init_state[i];
   }
 
   // Iteration for all other rounds.

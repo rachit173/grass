@@ -11,6 +11,7 @@ void GenerateMatchings(int l, int r, std::vector<std::vector<std::pair<int, int>
 void GeneratePlan(std::vector<std::vector<std::pair<int, int>>>& matchings, 
                   std::vector<std::vector<std::pair<int, int>>>& plan, 
                   std::vector<std::vector<std::pair<int, int>>>& machine_state,
-                  std::vector<std::vector<int>>& partition_to_be_sent);
+                  std::vector<std::vector<int>>& partition_to_be_sent,
+                  std::vector<std::pair<int, int>> init_state = {});
 
 #endif // MATCHING_GENERATOR_H

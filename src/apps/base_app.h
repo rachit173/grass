@@ -9,7 +9,7 @@
 template <typename R, typename A>
 class BaseApp : public Graph<R, A> {
 protected:
-    BaseApp(DistributedBufferConfig config, std::string& graph_file, bool weighted_edges = false): Graph<R, A>(config, graph_file, weighted_edges) {}
+    BaseApp(DistributedBuffer* buffer): Graph<R, A>(buffer) {}
 
 
 ///////////////////////// Static Methods to be implemented ///////////////////////////////
@@ -28,7 +28,6 @@ protected:
 //  void startProcessing(const int &num_iters);
 //  void collectResults();
 //  std::vector<Vertex<R,A>>& get_vertices();
-//  std::vector<Edge>& get_edges();
 ///////////////////////////////////////////////////////////////////////////////////
 
 };

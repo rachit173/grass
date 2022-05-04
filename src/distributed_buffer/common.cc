@@ -22,7 +22,7 @@ void DistributedBuffer::PrintInteractionMatrix() {
 
 // Determine if an epoch is complete
 bool DistributedBuffer::IsEpochComplete() {
-  return current_round_ >= (int) matchings_.size();
+  return (current_round_ % rounds_per_iteration_ == 0) && epoch_complete_; // Redundant check
 }
 
 bool DistributedBuffer::IsRoundComplete() {
@@ -32,7 +32,7 @@ bool DistributedBuffer::IsRoundComplete() {
 
   // 1. Check if all interactions between 2 super partitions are done
   // Check interactions within the same super partition only for the 0th round, as they won't happen in further rounds
-  if(current_round_ == 0) {
+  if(current_round_ % rounds_per_iteration_ == 0) {
     for(int i = partition_start1; i < partition_end1; i++) {
       for(int j = partition_start1; j < partition_end1; j++) {
         if(!interactions_matrix_[i][j]) return false;
