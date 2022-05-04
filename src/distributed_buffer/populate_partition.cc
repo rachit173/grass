@@ -4,7 +4,7 @@ void DistributedBuffer::PopulatePartitions() {
   while(true) {
     // sleep if the buffer is full or if all partitions are populated for this epoch
     while(buffer_size_ == capacity_ || fill_round_ == rounds_per_iteration_){
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     // Get partition according to plan

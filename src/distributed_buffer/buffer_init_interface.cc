@@ -18,9 +18,9 @@ void DistributedBuffer::LoadInteractionEdges(std::string& graph_file, bool weigh
   int src, dst;
   double weight = 1.0;
   
+  graph::Edge* edge = new graph::Edge();
   while (graph_file_stream >> src >> dst) {
     // Read and store edge
-    graph::Edge* edge = new graph::Edge();
     edge->set_src(src);
     edge->set_dst(dst);
     if(weighted_edges) {
@@ -34,6 +34,16 @@ void DistributedBuffer::LoadInteractionEdges(std::string& graph_file, bool weigh
     *interEdge = *edge;
     num_edges_++;
   }
+
+  stringstream ss;
+  for(int i = 0; i < num_partitions_; i++) {
+    for(int j = 0; j < num_partitions_; j++) {
+      ss << interaction_edges_[i][j].edges_size() << ",";
+    }
+    ss << "\n";
+  }
+  spdlog::info("Edge partition sizes: \n{}", ss.str());
+
   graph_file_stream.close();
 }
 

@@ -22,8 +22,6 @@ class PartitionServiceImpl final : public PartitionService::Service {
       
       delete partition;
       spdlog::debug("[gRPC] GetPartition: Partition {} for Super Partition {} sent", response->partition().partition_id(), super_partition_id);
-
-      buffer_->NotifyPartitionSent(); // Notify the main thread that the partition has been sent
       return grpc::Status::OK;
     }
 };
@@ -39,6 +37,9 @@ graph::VertexPartition* DistributedBuffer::SendPartition(int super_partition_id)
                 partition = it.second;
                 spdlog::debug("[gRPC] Sending Partition {} for Super Partition {}", partition->partition_id(), super_partition_id);
                 done_partitions_.erase(it.first);
+                if(done_partitions_.empty()){
+                  NotifyPartitionSent(); // Notify the main thread that the hashmap of to-be-sent partitions is empty
+                }
                 return partition;
             }
         }
