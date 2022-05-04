@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     std::string outdir = base_dir + "/" + app_name;
     int iterations = std::stoi(config["app.iterations"]);
     std::string filename = config["app.graph_file"];
-    std::string filepath = base_dir + "/graphs/" + filename;
+    std::string filepath = base_dir + "/" + filename;
 
     // Read buffer config
     buffer_config.self_rank = std::stoi(argv[1]);
