@@ -58,16 +58,16 @@ if __name__ == '__main__':
     m = int(sys.argv[1])
     n = int(sys.argv[2])
 
-    matA_filename = os.path.join(BASE_DIR, "matA_sm.txt")
-    matC_filename = os.path.join(BASE_DIR, "matC_sm.txt")
+    input_matrix_filename = os.path.join(BASE_DIR, "input_matrix.txt")
+    result_matrix_filename = os.path.join(BASE_DIR, "result_matrix.txt")
 
-    matA = create_matrix(m, n)
-    matB = transpose_matrix(matA)
-    matC = multiply_matrices(matA, matB)
+    input_matrix = create_matrix(m, n)
+    matB = transpose_matrix(input_matrix)
+    result_matrix = multiply_matrices(input_matrix, matB)
     
-    print("Writing Matrix A to {}".format(matA_filename))
-    write_matrix(matA_filename, matA)
-    print("Writing Matrix C to {}".format(matC_filename))
-    write_matrix(matC_filename, matC, True)
+    print("Writing Input Matrix to {}".format(input_matrix_filename))
+    write_matrix(input_matrix_filename, input_matrix)
+    print("Writing Result Matrix to {}".format(result_matrix_filename))
+    write_matrix(result_matrix_filename, result_matrix, True)
 
 

@@ -19,7 +19,7 @@ int main( int argc, char** argv){
         num_partitions = atoi(argv[2]);
     }
 
-    std::string matA_input_file = "/mnt/Work/grass/resources/matmul/matA.txt";
+    std::string matA_input_file = "/mnt/Work/grass/resources/matmul/input_matrix.txt";
 
     spdlog::info("Running Attention Matrix Multiplication with {} iters and {} partitions", num_iters, num_partitions);
     AttentionMatrixMultiply *attention_mm = new AttentionMatrixMultiply(num_partitions, matA_input_file);
