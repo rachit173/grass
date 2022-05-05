@@ -22,3 +22,20 @@ cc_grpc_library(
   grpc_only = True,
   deps = [":graph_cc_proto"],
 )
+
+proto_library(
+  name = "matmul_proto",
+  srcs = ["matmul.proto"]
+)
+
+cc_proto_library(
+  name = "matmul_cc_proto",
+  deps = [":matmul_proto"],
+)
+
+cc_grpc_library(
+  name = "matmul_cc_grpc",
+  srcs = [":matmul_proto"],
+  grpc_only = True,
+  deps = [":matmul_cc_proto"],
+)
