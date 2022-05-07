@@ -6,7 +6,7 @@
 #include <sstream>
 
 #include <grpcpp/grpcpp.h>
-#include "protos/matmul.grpc.pb.h"
+#include "protos/partition.grpc.pb.h"
 
 template< typename T >
 class Matrix {
@@ -40,10 +40,14 @@ public:
     }
 
     const T* get_results(int64_t index) const {
+        int results_size = this->matrix_->state().results_size();
+        if(index < 0 || index >= results_size) throw std::out_of_range(fmt::format("Matrix::get_results: index = {} is out of range", index));
         return this->matrix_->state().results(index).values().data();
     }
 
     T* get_mutable_results(int64_t index) {
+        int results_size = this->matrix_->state().results_size();
+        if(index < 0 || index >= results_size) throw std::out_of_range(fmt::format("Matrix::get_mutable_results: index = {} is out of range", index));
         return this->matrix_->mutable_state()->mutable_results(index)->mutable_values()->mutable_data();
     }
 

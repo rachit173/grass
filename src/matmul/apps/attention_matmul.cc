@@ -1,6 +1,7 @@
 #include "attention_matmul.h"
 
-AttentionMatrixMultiply::AttentionMatrixMultiply(int num_partitions, std::string &matA_input_file): BaseMatMulApp(num_partitions, matA_input_file) {
+AttentionMatrixMultiply::AttentionMatrixMultiply(DistributedBuffer* buffer, std::string &input_file)
+: BaseMatMulApp<double>(buffer, input_file) {
     this->MatMul::set_matmul_func(&AttentionMatrixMultiply::matmul_using_blas);
 }
 
@@ -9,10 +10,15 @@ void AttentionMatrixMultiply::matmul_using_blas(Matrix<double> &matrix_A, Matrix
     int64_t m = matrix_A.get_num_rows();
     int64_t k = matrix_A.get_num_cols();
     int64_t n = matrix_B.get_num_rows();
+
+    if (m == 0 || n == 0) {
+        spdlog::warn("Skipping Multiplication of empty matrix");
+        return;
+    }
     
     int64_t lda = k;
     int64_t ldb = k;
-    int64_t ldc = m;
+    int64_t ldc = n;
 
     const double *A = matrix_A.get_data();
     const double *B = matrix_B.get_data();

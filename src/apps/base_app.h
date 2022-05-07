@@ -1,7 +1,7 @@
 #ifndef BASE_APP_H
 #define BASE_APP_H
 
-#include "protos/graph.grpc.pb.h"
+#include "protos/partition.grpc.pb.h"
 #include "src/graph/Graph.h"
 #include "src/distributed_buffer/distributed_buffer.h"
 
@@ -9,7 +9,8 @@
 template <typename R, typename A>
 class BaseApp : public Graph<R, A> {
 protected:
-    BaseApp(DistributedBuffer* buffer): Graph<R, A>(buffer) {}
+    BaseApp(DistributedBuffer* buffer, std::string input_file, bool weighted_edges = false)
+    : Graph<R, A>(buffer, input_file, weighted_edges) {}
 
 
 ///////////////////////// Static Methods to be implemented ///////////////////////////////

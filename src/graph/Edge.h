@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <grpcpp/grpcpp.h>
-#include "protos/graph.grpc.pb.h"
+#include "protos/partition.grpc.pb.h"
 
 class Edge
 {

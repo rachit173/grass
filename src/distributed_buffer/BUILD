@@ -16,7 +16,7 @@ cc_library(
     "matching_generator.h",
   ],
   deps = [
-    "//protos:graph_cc_grpc",
+    "//protos:partition_cc_grpc",
     "@com_github_grpc_grpc//:grpc++",
     "@com_google_absl//absl/strings",
     "@com_github_grpc_grpc//:grpc++_reflection",

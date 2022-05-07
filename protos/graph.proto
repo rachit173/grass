@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package graph;
 
-import "google/protobuf/any.proto";
-
 message Degree {
   int32 in_degree = 1;
   int32 out_degree = 2;
@@ -45,7 +43,6 @@ message Edge {
 
 message VertexPartition {
   repeated Vertex vertices = 1;
-  int32 partition_id = 2;
 }
 
 message InteractionEdges {
@@ -58,21 +55,3 @@ message Interaction {
   InteractionEdges directed_edges = 3;
 }
 
-message PartitionRequest {
-  int32 super_partition_id = 1;
-  int32 incoming_round = 2;
-}
-
-message PartitionResponse {
-  int32 super_partition_id = 1;
-  VertexPartition partition = 2;
-}
-
-message PingRequest {}
-
-message PingResponse {}
-
-service PartitionService {
-  rpc GetPartition (PartitionRequest) returns (PartitionResponse) {}
-  rpc Ping (PingRequest) returns (PingResponse) {}
-};

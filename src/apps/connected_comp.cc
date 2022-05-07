@@ -1,6 +1,7 @@
 #include "connected_comp.h"
 
-ConnectedComponents::ConnectedComponents(DistributedBuffer* buffer) : BaseApp<double, double>(buffer) {
+ConnectedComponents::ConnectedComponents(DistributedBuffer* buffer, std::string input_file, bool weighted_edges)
+ : BaseApp<double, double>(buffer, input_file, weighted_edges) {
     this->Graph::set_init_func(&ConnectedComponents::init);
     this->Graph::set_gather_func(&ConnectedComponents::gather);
     this->Graph::set_apply_func(&ConnectedComponents::apply);

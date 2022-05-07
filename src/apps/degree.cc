@@ -1,6 +1,7 @@
 #include "degree.h"
 
-Degree::Degree(DistributedBuffer* buffer) : BaseApp<double, double>(buffer) {
+Degree::Degree(DistributedBuffer* buffer, std::string input_file, bool weighted_edges)
+ : BaseApp<double, double>(buffer, input_file, weighted_edges) {
     this->Graph::set_init_func(&Degree::init);
     this->Graph::set_gather_func(&Degree::gather);
     this->Graph::set_apply_func(&Degree::apply);

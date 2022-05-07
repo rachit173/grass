@@ -3,7 +3,7 @@
 void DistributedBuffer::PopulatePartitions() {
   while(true) {
     // sleep if the buffer is full or if all partitions are populated for this epoch
-    while(buffer_size_ == capacity_ || fill_round_ == rounds_per_iteration_){
+    while(buffer_size_ == capacity_ || fill_round_ == rounds_per_iteration_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
@@ -12,10 +12,10 @@ void DistributedBuffer::PopulatePartitions() {
     spdlog::trace("Populating Round {}: Fetching partition {} from machine {}", fill_round_, target_super_partition, target_machine);
 
     grpc::ClientContext context;
-    graph::PartitionRequest request;
+    partition::PartitionRequest request;
     request.set_super_partition_id(target_super_partition);
     request.set_incoming_round(fill_round_);
-    graph::PartitionResponse response;
+    partition::PartitionResponse response;
 
     grpc::Status status = client_stubs_[target_machine]->GetPartition(&context, request, &response);
     if (!status.ok()) {
@@ -25,7 +25,7 @@ void DistributedBuffer::PopulatePartitions() {
     }
 
     // Add partition to buffer
-    graph::VertexPartition* partition = new graph::VertexPartition();
+    partition::Partition* partition = new partition::Partition();
     *partition = response.partition();
     
     spdlog::trace("Partition {} fetched from machine {}", partition->partition_id(), target_machine);
@@ -44,16 +44,16 @@ void DistributedBuffer::PopulatePartitions() {
   }
 }
 
-// Add a new partition to the buffer (vertex_partitions_)
-void DistributedBuffer::AddPartitionToBuffer(graph::VertexPartition* partition) {
+// Add a new partition to the buffer (partitions_)
+void DistributedBuffer::AddPartitionToBuffer(partition::Partition* partition) {
   std::unique_lock<std::mutex> buffer_lock(buffer_mutex_);
-  auto comp_partition = [&](graph::VertexPartition* p) {
+  auto comp_partition = [&](partition::Partition* p) {
     return p == nullptr;
   };
 
-  auto partition_iter = std::find_if(vertex_partitions_.begin(), vertex_partitions_.end(), comp_partition);
+  auto partition_iter = std::find_if(partitions_.begin(), partitions_.end(), comp_partition);
 
-  if (partition_iter == vertex_partitions_.end()) {
+  if (partition_iter == partitions_.end()) {
     spdlog::error("Buffer Full. Cannot add partition {}", partition->partition_id());
     exit(1);
   }
@@ -64,29 +64,39 @@ void DistributedBuffer::AddPartitionToBuffer(graph::VertexPartition* partition) 
   spdlog::trace("Added partition {} to buffer. New buffer size: {}", partition->partition_id(), buffer_size_);
 }
 
-void DistributedBuffer::AddInteractions(graph::VertexPartition* partition) {
+void DistributedBuffer::AddInteractions(partition::Partition* partition) {
   int stable_super_partition_id = GetStablePartitionId(fill_round_ - 1);
   int incoming_partition_id = partition->partition_id();
 
   // std::unique_lock<std::mutex> buffer_lock(buffer_mutex_); // TODO: Check if this is needed
   // Determine which half is the stable super partition
   int start_idx = 0;
-  if(vertex_partitions_[start_idx] == nullptr || !BelongsToSuperPartition(vertex_partitions_[start_idx]->partition_id(), stable_super_partition_id)) {
+  if(partitions_[start_idx] == nullptr || !BelongsToSuperPartition(partitions_[start_idx]->partition_id(), stable_super_partition_id)) {
     start_idx = capacity_/2;
   }
   
   std::unique_lock<std::mutex> lock(mutex_);
   int added_interactions = 0;
   for(int i = start_idx; i < start_idx + capacity_/2; i++) {
-    graph::VertexPartition* vp = vertex_partitions_[i];
+    partition::Partition* vp = partitions_[i];
     if(!interactions_matrix_[incoming_partition_id][vp->partition_id()]) {
-      WorkUnit interaction(partition, vp, &interaction_edges_[incoming_partition_id][vp->partition_id()]);
+      partition::Interaction* interEdges = nullptr;
+      if (!interactions_.empty()) {
+        interEdges = &interactions_[incoming_partition_id][vp->partition_id()];
+      }
+
+      WorkUnit interaction(partition, vp, interEdges);
       interaction_queue_.push(interaction);
       added_interactions++;
       spdlog::trace("Added interaction between partition {} and {}", incoming_partition_id, vp->partition_id());
     }
     if(!interactions_matrix_[vp->partition_id()][incoming_partition_id]) {
-      WorkUnit interaction(vp, partition, &interaction_edges_[vp->partition_id()][incoming_partition_id]);
+      partition::Interaction* interEdges = nullptr;
+      if (!interactions_.empty()) {
+        interEdges = &interactions_[vp->partition_id()][incoming_partition_id];
+      }
+
+      WorkUnit interaction(vp, partition, interEdges);
       interaction_queue_.push(interaction);
       added_interactions++;
       spdlog::trace("Added interaction between partition {} and {}", vp->partition_id(), incoming_partition_id);
