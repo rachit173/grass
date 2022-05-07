@@ -29,7 +29,9 @@ void DistributedBuffer::LoadInteractionEdges(std::string& graph_file, bool weigh
     edge->set_weight(weight);
 
     // Put edges in Interaction edge buckets
-    int src_partition = src / partition_size_, dst_partition = dst / partition_size_;
+    // hash function is used to partition the vertices
+    int src_partition = hasher_(src) % num_partitions_;
+    int dst_partition = hasher_(dst) % num_partitions_; 
     graph::Edge *interEdge = interaction_edges_[src_partition][dst_partition].add_edges();
     *interEdge = *edge;
     num_edges_++;
@@ -50,12 +52,13 @@ void DistributedBuffer::LoadInteractionEdges(std::string& graph_file, bool weigh
 graph::VertexPartition* DistributedBuffer::InitPartition(int partition_id, int partition_start, int partition_end) {
   graph::VertexPartition* partition = new graph::VertexPartition();
   partition->set_partition_id(partition_id);
-  for(int j = partition_start; j < partition_end; j++){ // j --> vertex id
-      graph::Vertex* vertex = partition->add_vertices();
-      // Default initialization for Vertex
-      vertex->set_id(j);
-      vertex->mutable_degree()->set_out_degree(0);
-      vertex->mutable_degree()->set_in_degree(0);
+  auto& partition_vertices = partition_vertices_[partition_id];
+  for (auto v : partition_vertices) {
+    graph::Vertex* vertex = partition->add_vertices();
+    // Default initiliazation for Vertex
+    vertex->set_id(v);
+    vertex->mutable_degree()->set_out_degree(0);
+    vertex->mutable_degree()->set_in_degree(0);
   }
   return partition;
 }
@@ -71,6 +74,11 @@ void DistributedBuffer::InitSuperPartition(std::vector<graph::VertexPartition*>&
 }
 
 void DistributedBuffer::LoadInitialPartitions() {
+  partition_vertices_.resize(num_partitions_);
+  for (int i = 0; i < num_vertices_; i++) {
+    int partition_id = hasher_(i) % num_partitions_;
+    partition_vertices_[partition_id].push_back(i);
+  }
   int left_super_partition = (2*self_rank_); // machine_state_[0][self_rank_].first;
   int right_super_partition = (2*self_rank_+1); // machine_state_[0][self_rank_].second;
   int B = capacity_/2;

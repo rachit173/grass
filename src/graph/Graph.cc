@@ -74,20 +74,19 @@ std::vector< Vertex<R, A> >& Graph<R, A>::get_vertices() {
 template <typename R, typename A>
 void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, graph::VertexPartition *dst_partition, const graph::InteractionEdges *directed_edges) {
     int64_t num_interaction_edges = directed_edges->edges().size();
-    std::vector<Vertex<R,A>> src_vertices, dst_vertices;
+    // std::vector<Vertex<R,A>> src_vertices, dst_vertices;
+    std::unordered_map<int64_t, Vertex<R, A>> src_vertices, dst_vertices;
     // Expose partition size from buffer
     int partition_size = buffer_->GetPartitionSize();
-    for(int64_t i = 0; i < partition_size; i++) {
-        if(i < src_partition->vertices().size()) {
-            graph::Vertex* src = src_partition->mutable_vertices(i);
-            src_vertices.emplace_back(Vertex<R, A>(src));
-        }
-
-        if(i < dst_partition->vertices().size()) {
-            graph::Vertex* dst = dst_partition->mutable_vertices(i);
-            dst_vertices.emplace_back(Vertex<R, A>(dst));
-        }
+    for (int64_t i = 0; i < src_partition->vertices().size(); i++) {
+        graph::Vertex* vertex = src_partition->mutable_vertices(i);
+        src_vertices[vertex->id()] = Vertex<R,A>(vertex);
     }
+    for (int64_t i = 0; i < dst_partition->vertices().size(); i++) {
+        graph::Vertex* vertex = dst_partition->mutable_vertices(i);
+        dst_vertices[vertex->id()] = Vertex<R,A>(vertex);
+    }
+
     Edge edge_obj;
     for(int64_t i = 0; i < num_interaction_edges; i++) {
         const graph::Edge *edge = &directed_edges->edges(i);
@@ -98,7 +97,7 @@ void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, grap
 
         int src_vertex_id = edge->src(), dst_vertex_id = edge->dst();
         edge_obj.set_edge(edge);
-        gather_func_(src_vertices[src_vertex_id % partition_size], dst_vertices[dst_vertex_id % partition_size], edge_obj);
+        gather_func_(src_vertices[src_vertex_id], dst_vertices[dst_vertex_id], edge_obj);
     }
 }
 

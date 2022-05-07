@@ -15,6 +15,7 @@
 #include <condition_variable>
 #include <spdlog/spdlog.h>
 #include <assert.h>
+#include <functional>
 
 #include "matching_generator.h"
 
@@ -94,6 +95,8 @@ private:
   int fill_round_;
   int buffer_size_;
   bool epoch_complete_;
+  std::hash<int> hasher_;
+  std::vector<std::vector<int>> partition_vertices_;
   std::vector<std::vector<std::pair<int, int>>> matchings_;
   std::vector<std::vector<std::pair<int, int>>> plan_;
   std::vector<std::vector<std::pair<int, int>>> machine_state_;
