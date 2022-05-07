@@ -14,6 +14,7 @@ void DistributedBuffer::PopulatePartitions() {
     grpc::ClientContext context;
     graph::PartitionRequest request;
     request.set_super_partition_id(target_super_partition);
+    request.set_incoming_round(fill_round_);
     graph::PartitionResponse response;
 
     grpc::Status status = client_stubs_[target_machine]->GetPartition(&context, request, &response);

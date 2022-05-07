@@ -12,7 +12,7 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::info);
     spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
 
     if (argc < 2) {
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     std::string outdir = base_dir + "/" + app_name;
     int iterations = std::stoi(config["app.iterations"]);
     std::string filename = config["app.graph_file"];
-    std::string filepath = base_dir + "/" + filename;
+    std::string filepath = base_dir + "/graphs/" + filename;
 
     // Read buffer config
     buffer_config.self_rank = std::stoi(argv[1]);

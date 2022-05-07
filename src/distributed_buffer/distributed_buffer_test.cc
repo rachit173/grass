@@ -136,9 +136,9 @@ void PrintPartitionToBeSent(const vector<vector<int>>& partition_to_be_sent) {
   }
 }
 
-TEST(DistributedBufferTest, GeneratePlanK3) {
+TEST(DistributedBufferTest, GeneratePlanK8) {
   vvii matchings;
-  int k = 3;
+  int k = 8;
   int n = 2*k;
   GenerateMatchings(0, n, matchings);
   PrintMatchings(matchings);

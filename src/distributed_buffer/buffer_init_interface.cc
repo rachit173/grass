@@ -104,6 +104,7 @@ void DistributedBuffer::ProduceInteractions() {
       graph::VertexPartition* dst = vertex_partitions_[j];
       graph::InteractionEdges* interEdges = &interaction_edges_[src->partition_id()][dst->partition_id()];
       WorkUnit interaction(src, dst, interEdges);
+      std::unique_lock<std::mutex> queue_lock(mutex_);
       interaction_queue_.push(interaction);
     }
   }

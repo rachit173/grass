@@ -5,12 +5,15 @@ using namespace std;
 // Pick work unit from queue
 std::optional<WorkUnit> DistributedBuffer::GetWorkUnit() {
   std::unique_lock<std::mutex> lock(mutex_);
-  if(IsEpochComplete()) {
-    return std::nullopt;
-  }
-  if(interaction_queue_.empty()) {
+  while(interaction_queue_.empty() && !IsEpochComplete()) {
     spdlog::debug("Waiting for work unit");
     cv_.wait(lock); // release lock and wait till queue populated
+  }
+  if(IsEpochComplete()) {
+    return std::nullopt;
+  } else if(interaction_queue_.empty()) {
+    spdlog::critical("Queue empty on signal!!!");
+    exit(1);
   }
   auto interaction = interaction_queue_.front();
   spdlog::trace("Round: {}, Work Unit: (src: {}, dst: {})", current_round_, interaction.src()->partition_id(), interaction.dst()->partition_id());
@@ -23,31 +26,8 @@ void DistributedBuffer::MarkInteraction(WorkUnit interaction) {
   int src_partition_id = interaction.src()->partition_id(), dst_partition_id = interaction.dst()->partition_id();
   interactions_matrix_[src_partition_id][dst_partition_id] = true;
   spdlog::trace("Marked interaction: (src: {}, dst: {})", src_partition_id, dst_partition_id);
-
-  // 2. Identify the outgoing partition and superpartition and check if it can be released.
-  int outgoing_super_partition = partition_to_be_sent_[current_round_][self_rank_];
-  int stable_super_partition = GetStablePartitionId(current_round_);
-  
-  // Check and release a partition only if it is not the last round in the epoch
-  // Reason: Apply phase & next epoch requires all partitions present in the buffer
-  if(current_round_ % rounds_per_iteration_ < rounds_per_iteration_ - 1) {
-    // 3. Check and try to release partition if it is part of outgoing super partition.
-    CheckAndReleaseOutgoingPartition(outgoing_super_partition, stable_super_partition, src_partition_id);
-    if(src_partition_id != dst_partition_id) {
-      CheckAndReleaseOutgoingPartition(outgoing_super_partition, stable_super_partition, dst_partition_id);
-    }
-  }
-
-  // Advance round if all interactions are done for this round
-  if(IsRoundComplete()) {
-    spdlog::debug("Round {} completed", current_round_);
-    current_round_++;
-    if(current_round_ % rounds_per_iteration_ == 0) {
-      spdlog::debug("Epoch completed");
-      epoch_complete_ = true;
-    }
-  }
-  
+  CheckAndReleaseOutgoingPartition(src_partition_id);
+  CheckAndReleaseOutgoingPartition(dst_partition_id);
   PrintInteractionMatrix();
 }
 
@@ -62,8 +42,8 @@ void DistributedBuffer::ReleasePartition(int partition_id) {
     };
     auto partition_iter = std::find_if(vertex_partitions_.begin(), vertex_partitions_.end(), comp_partition);
     if (partition_iter == vertex_partitions_.end()) {
-      spdlog::error("Partition {} not found. Exiting..", partition_id);
-      exit(1);
+      spdlog::critical("Partition {} not found. ", partition_id);
+      return;
     }
     partition = *partition_iter;
     
@@ -80,7 +60,17 @@ void DistributedBuffer::ReleasePartition(int partition_id) {
 }
 
 // Check if the partition is ready to be released.
-void DistributedBuffer::CheckAndReleaseOutgoingPartition(int outgoing_super_partition_id, int stable_super_partition_id, int partition_id) {
+void DistributedBuffer::CheckAndReleaseOutgoingPartition(int partition_id) {
+  // Identify the outgoing partition and superpartition and check if it can be released.
+  int outgoing_super_partition_id = partition_to_be_sent_[current_round_][self_rank_];
+  int stable_super_partition_id = GetStablePartitionId(current_round_);
+  
+  // Check and release a partition only if it is not the last round in the epoch
+  // Reason: Apply phase & next epoch requires all partitions present in the buffer
+  if(current_round_ == rounds_per_iteration_ - 1) {
+    spdlog::trace("Don't release partition {} in the last round", partition_id);
+    return;
+  }
 
   if(!BelongsToSuperPartition(partition_id, outgoing_super_partition_id)) {
     spdlog::trace("Partition {} does not belong to outgoing super partition {}", partition_id, outgoing_super_partition_id);
@@ -123,6 +113,7 @@ void DistributedBuffer::CheckAndReleaseOutgoingPartition(int outgoing_super_part
 void DistributedBuffer::InitEpoch() {
   // Initialize data members
   current_round_ = 0;
+  current_round_partitions_sent_ = 0;
   fill_round_ = 1;
   epoch_complete_ = false;
   interactions_matrix_ = std::vector<std::vector<bool>>(num_partitions_, std::vector<bool>(num_partitions_, false));
@@ -144,9 +135,22 @@ void DistributedBuffer::InitEpoch() {
     machine_state_.clear();
     GeneratePlan(matchings_, plan_, machine_state_, partition_to_be_sent_);
   } else { // Assume that the matchings are already generated as the buffer has a certain state
-    vector<pair<int, int>> current_matching = matchings_.back();
+    // Set starting matching to machine state, as matching state is assumed to match machine state for initial round
+    vector<pair<int, int>> current_matching = machine_state_.back();
     vector<pair<int, int>> current_machine_state = machine_state_.back();
-    assert(current_machine_state[self_rank_] == current_partitions);
+    assert(current_machine_state[self_rank_] == current_partitions || current_machine_state[self_rank_] == make_pair(current_partitions.second, current_partitions.first));
+    // Arrange vertex partitions in order of machine state
+    vector<graph::VertexPartition*> tmp_vertex_partitions(capacity_, nullptr);
+    int idx1 = 0, idx2 = capacity_/2;
+    for(int i = 0; i < capacity_; i++) {
+      if(vertex_partitions_[i]->partition_id() == current_machine_state[self_rank_].first) {
+        tmp_vertex_partitions[idx1] = vertex_partitions_[i];
+        idx1++;
+      } else {
+        tmp_vertex_partitions[idx2] = vertex_partitions_[i];
+        idx2++;
+      }
+    }
     // Get the next matchings in a cyclic way starting from the current matching
     matchings_.pop_back();
     matchings_.insert(matchings_.begin(), current_matching);

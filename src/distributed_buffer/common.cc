@@ -22,10 +22,12 @@ void DistributedBuffer::PrintInteractionMatrix() {
 
 // Determine if an epoch is complete
 bool DistributedBuffer::IsEpochComplete() {
-  return (current_round_ % rounds_per_iteration_ == 0) && epoch_complete_; // Redundant check
+  return (current_round_ % rounds_per_iteration_ == rounds_per_iteration_ - 1) 
+          && (fill_round_ == rounds_per_iteration_)
+          && IsInteractionsDone();
 }
 
-bool DistributedBuffer::IsRoundComplete() {
+bool DistributedBuffer::IsInteractionsDone() {
   std::pair<int, int> current_state = machine_state_[current_round_][self_rank_];
   int partition_start1 = current_state.first * capacity_/2, partition_end1 = (current_state.first + 1) * capacity_/2;
   int partition_start2 = current_state.second * capacity_/2, partition_end2 = (current_state.second + 1) * capacity_/2;
