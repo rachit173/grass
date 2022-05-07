@@ -2,7 +2,8 @@ cd /mnt/Work/grass
 wget https://snap.stanford.edu/data/web-BerkStan.txt.gz
 gzip -d web-BerkStan.txt.gz
 mv web-BerkStan.txt resources/graphs
-
+sed -i '1,4d' /mnt/Work/grass/resources/graphs/web-BerkStan.txt
+sed -i '1s/^/685231\n/' /mnt/Work/grass/resources/graphs/web-BerkStan.txt
 
 # Graph 500 
 rm -rf graphbench
