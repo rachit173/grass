@@ -1,4 +1,11 @@
 #include "distributed_buffer.h"
+#include <spdlog/spdlog.h>
+#include "protos/graph.grpc.pb.h"
+#include "src/apps/page_rank.h"
+#include "src/apps/connected_comp.h"
+#include "src/apps/shortest_path.h"
+#include "src/apps/degree.h"
+// #include "src/utils/config_utils.h"
 
 #include "gtest/gtest.h"
 #include <thread>
@@ -155,10 +162,40 @@ TEST(DistributedBufferTest, GeneratePlanK104) {
   // EXPECT_EQ(VerifyMatchings(n, matchings), true);
   vvii plan;
   vvii machine_state;
-  vector<vector<int> partition_to_be_sent;
-  GeneratePlan(matchings, plan, machine_state);
+  vector<vector<int>> partition_to_be_sent;
+  GeneratePlan(matchings, plan, machine_state, partition_to_be_sent);
   PrintPlan(plan);
   PrintMachineState(machine_state);
-  PrintPartitionToBeSent(partitions_to_be_sent);
+  PrintPartitionToBeSent(partition_to_be_sent);
   EXPECT_EQ(VerifyPlan(n, machine_state), true);
+}
+
+
+TEST(DistributedBufferTest, RunFourMachinesPageRank) {
+  DistributedBufferConfig config;
+  // string config_file = ""
+  config.capacity = 2;
+  config.num_partitions = 8;
+  config.num_workers = 4;
+  config.server_addresses = {"localhost:50051", "localhost:50052", "localhost:50053", "localhost:50054"};
+
+  std::vector<std::thread> worker_threads;
+  std::string filepath = "/mnt/Work/grass/resources/graphs/web-BerkStan.txt";
+  for (int r = 0; r < config.num_workers; r++) {
+
+    worker_threads.push_back(std::thread([&](int rank) {
+      config.self_rank = rank;
+      DistributedBuffer* buffer = new DistributedBuffer(config, filepath);
+      Degree* degree = new Degree(buffer);
+      degree->initialize();
+      degree->startProcessing(1);
+      PageRank* page_rank = new PageRank(buffer);
+      int iterations = 30;
+      page_rank->initialize();
+      page_rank->startProcessing(iterations);
+    }, r));
+  }
+  for (int r = 0; r < worker_threads.size(); r++) {
+    worker_threads[r].join();
+  }
 }

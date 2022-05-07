@@ -36,6 +36,10 @@ cc_test(
   deps = [
     ":distributed_buffer",
     "@com_google_googletest//:gtest_main",
+    "//src/apps:page_rank",
+    "//src/apps:connected_comp",
+    "//src/apps:shortest_path",
+    "//src/apps:degree",
   ],
   copts = [
     "-std=c++17"
