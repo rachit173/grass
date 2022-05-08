@@ -8,13 +8,11 @@
 #include "src/apps/shortest_path.h"
 #include "src/apps/degree.h"
 #include "src/utils/config_utils.h"
+#include "src/utils/logger.h"
 
 using namespace std;
 
 int main(int argc, char* argv[]) {
-    spdlog::set_level(spdlog::level::debug);
-    spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
-
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " rank <config filepath>" << std::endl;
         return 1;
@@ -34,6 +32,8 @@ int main(int argc, char* argv[]) {
     int iterations = std::stoi(config["app.iterations"]);
     std::string filename = config["app.graph_file"];
     std::string filepath = base_dir + "/" + filename;
+    std::string log_level = config["app.log_level"];
+    std::string log_file = app_name + "_" + filename;
 
     // Read buffer config
     buffer_config.self_rank = std::stoi(argv[1]);
@@ -41,6 +41,13 @@ int main(int argc, char* argv[]) {
     buffer_config.num_partitions = stoi(config["buffer.num_partitions"]);
     buffer_config.num_workers = stoi(config["buffer.num_workers"]);
     buffer_config.server_addresses = split_addresses(config["buffer.server_addresses"]);
+
+    GrassLogger grass_logger = GrassLogger(log_file);
+    spdlog::set_default_logger(grass_logger.main_logger_);
+    
+    // Set log level for console
+    spdlog::level::level_enum log_level_enum = spdlog::level::from_str(log_level);
+    grass_logger.setConsoleLogLevel(log_level_enum);
 
     auto start = std::chrono::high_resolution_clock::now();
     DistributedBuffer* buffer = new DistributedBuffer(buffer_config, filepath);
