@@ -1,12 +1,37 @@
 # Kill previous instances of run_app
 ps -aux | grep run_app | awk '{print $2}' | xargs kill -9
 
+NUM_WORKERS=$1
+ITERS=$2
+if [ -z $NUM_WORKERS ]; then
+  NUM_WORKERS=2
+fi
+if [ -z $ITERS ]; then
+  ITERS=10
+fi
 # Change to base directory
 BASE_DIR=/mnt/Work/grass
 SOCKET_OFFSET=16
 echo "$BASE_DIR"
 cd $BASE_DIR
 bazel build --copt=-O3 //src:run_app
+
+KillAll() {
+  pids=$(ps -ef | grep run_app | grep -v grep | awk '{print $2}')
+  if [ -n "$pids" ]; then
+    echo "Killing previous instances of run_app"
+    kill -9 $pids
+  fi
+}
+
+GenerateServerAddresses() {
+  local num_workers=$1
+  addr=""
+  SOCKET_BASE=40000
+  for i in $(seq 1 $num_workers); do
+    addr+="localhost:$((SOCKET_BASE + i)),"
+  done
+}
 
 RunCore () {
   rank=$1
@@ -16,105 +41,31 @@ RunCore () {
   echo "Process $rank: $pid"
 }
 
-Run2() {
-echo "Runnning single machine, 2 cores"
+RunK() {
+local num_workers=$1
+local iters=$2
+GenerateServerAddresses $num_workers
+echo "Runnning single machine, $num_workers cores"
 rm /mnt/Work/grass/tmp_exec.conf
 cat >> /mnt/Work/grass/tmp_exec.conf << EOF
 buffer.capacity=4
-buffer.num_partitions=8
-buffer.num_workers=2
-buffer.server_addresses=localhost:50051,localhost:50052
+buffer.num_partitions=$((num_workers*4))
+buffer.num_workers=$num_workers
+buffer.server_addresses=$addr
 
 app.name=pagerank
 app.base_dir=/mnt/Work/grass/resources/graphs
-app.iterations=30
+app.out_dir=/mnt/Work/grass/resources
+app.iterations=$iters
 app.graph_file=web-BerkStan.txt
+app.log_level=info
 EOF
-RunCore 0
-RunCore 1
+for (( c=0; c<$num_workers; c++ ))
+do
+  RunCore $c
+done
 wait
 }
 
-Run4(){
-echo "Runnning single machine, 4 cores"
-rm /mnt/Work/grass/tmp_exec.conf
-cat >> /mnt/Work/grass/tmp_exec.conf << EOF
-buffer.capacity=2
-buffer.num_partitions=8
-buffer.num_workers=4
-buffer.server_addresses=localhost:40051,localhost:40052,localhost:40053,localhost:40054
-
-app.name=pagerank
-app.base_dir=/mnt/Work/grass/resources/graphs
-app.iterations=30
-app.graph_file=web-BerkStan.txt
-EOF
-
-RunCore 0
-RunCore 1
-RunCore 2
-RunCore 3
-wait
-}
-
-Run8(){
-echo "Runnning single machine, 8 cores"
-rm /mnt/Work/grass/tmp_exec.conf
-cat >> /mnt/Work/grass/tmp_exec.conf << EOF
-buffer.capacity=2
-buffer.num_partitions=16
-buffer.num_workers=8
-buffer.server_addresses=localhost:40051,localhost:40052,localhost:40053,localhost:40054,localhost:40055,localhost:40056,localhost:40057,localhost:40058
-
-app.name=pagerank
-app.base_dir=/mnt/Work/grass/resources/graphs
-app.iterations=30
-app.graph_file=web-BerkStan.txt
-EOF
-
-RunCore 0
-RunCore 1
-RunCore 2
-RunCore 3
-RunCore 4
-RunCore 5
-RunCore 6
-RunCore 7
-wait
-}
-
-Run16(){
-echo "Runnning single machine, 16 cores"
-rm /mnt/Work/grass/tmp_exec.conf
-cat >> /mnt/Work/grass/tmp_exec.conf << EOF
-buffer.capacity=4
-buffer.num_partitions=64
-buffer.num_workers=16
-buffer.server_addresses=localhost:40051,localhost:40052,localhost:40053,localhost:40054,localhost:40055,localhost:40056,localhost:40057,localhost:40058,localhost:40059,localhost:40060,localhost:40061,localhost:40062,localhost:40063,localhost:40064,localhost:40065,localhost:40066
-
-app.name=pagerank
-app.base_dir=/mnt/Work/grass/resources/graphs
-app.iterations=30
-app.graph_file=web-BerkStan.txt
-EOF
-
-RunCore 0
-RunCore 1
-RunCore 2
-RunCore 3
-RunCore 4
-RunCore 5
-RunCore 6
-RunCore 7
-RunCore 8
-RunCore 9
-RunCore 10
-RunCore 11
-RunCore 12
-RunCore 13
-RunCore 14
-RunCore 15
-wait
-}
-
-Run2
+KillAll
+RunK $NUM_WORKERS $ITERS

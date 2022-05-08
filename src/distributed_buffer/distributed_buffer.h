@@ -56,7 +56,7 @@ public:
   int64_t GetPartitionSize() { return partition_size_; }
   int64_t GetNumVertices() { return num_vertices_; }
   int64_t GetNumEdges() { return num_edges_; }
-  int64_t GetCurrentRound() { return current_round_; }
+  int64_t GetOutgoingRound() { return outgoing_round_; }
   void WaitForEpochCompletion();
   // Used by Partition service
   graph::VertexPartition* SendPartition(int partition_id);
@@ -94,7 +94,7 @@ private:
   int capacity_;
   int num_workers_;
   int partition_size_;
-  int current_round_;
+  int outgoing_round_;
   int partitions_sent_;
   int fill_round_;
   int partitions_fetched_;

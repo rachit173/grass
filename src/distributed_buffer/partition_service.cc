@@ -17,7 +17,7 @@ class PartitionServiceImpl final : public PartitionService::Service {
       int incoming_round = request->incoming_round();
 
       // Without sending the partition, current round cannot increase --> incoming_round >= current_round
-      if(incoming_round != buffer_->GetCurrentRound() + 1) {
+      if(incoming_round != buffer_->GetOutgoingRound() + 1) {
         return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, "Incoming round does not match provider round + 1");
       }
 
@@ -51,11 +51,15 @@ graph::VertexPartition* DistributedBuffer::SendPartition(int super_partition_id)
           partitions_sent_++;
           // Update round number when 1 super partition is sent
           if(partitions_sent_ == capacity_/2) {
-            current_round_++;
+            outgoing_round_++;
             partitions_sent_ = 0;
             round_incremented = true;
           }
           break;
+        }
+        if(partition == nullptr) {  
+          spdlog::trace("[gRPC] Waiting for free Partition in Super Partition {}", super_partition_id);
+          cv_send_.wait(lock);
         }
       }
       
@@ -68,10 +72,6 @@ graph::VertexPartition* DistributedBuffer::SendPartition(int super_partition_id)
       }
 
       if(partition != nullptr) return partition;
-
-      spdlog::trace("[gRPC] Waiting for free Partition in Super Partition {}", super_partition_id);
-      std::unique_lock<std::mutex> lock(mutex_send_);
-      cv_send_.wait(lock);
     }
 }
 

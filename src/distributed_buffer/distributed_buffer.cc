@@ -13,7 +13,7 @@ std::optional<WorkUnit> DistributedBuffer::GetWorkUnit() {
     return std::nullopt;
   }
   auto interaction = interaction_queue_.front();
-  spdlog::trace("Round: {}, Work Unit: (src: {}, dst: {})", current_round_, interaction.src()->partition_id(), interaction.dst()->partition_id());
+  spdlog::trace("Round: {}, Work Unit: (src: {}, dst: {})", outgoing_round_, interaction.src()->partition_id(), interaction.dst()->partition_id());
   interaction_queue_.pop();
   return interaction;
 }
@@ -25,7 +25,6 @@ void DistributedBuffer::MarkInteraction(WorkUnit interaction) {
   spdlog::trace("Marked interaction: (src: {}, dst: {})", src_partition_id, dst_partition_id);
 
   CheckAndReleaseAllPartitions();
-  PrintInteractionMatrix();
 }
 
 // Write to a file or store to some different buffer to be retrieved when sending to another part of the buffer.
@@ -66,12 +65,12 @@ void DistributedBuffer::CheckAndReleaseAllPartitions() {
 // Check if the partition is ready to be released.
 void DistributedBuffer::CheckAndReleaseOutgoingPartition(int partition_id) {
   // Identify the outgoing partition and superpartition and check if it can be released.
-  int outgoing_super_partition_id = partition_to_be_sent_[current_round_][self_rank_];
-  int stable_super_partition_id = GetStablePartitionId(current_round_);
+  int outgoing_super_partition_id = partition_to_be_sent_[outgoing_round_][self_rank_];
+  int stable_super_partition_id = GetStablePartitionId(outgoing_round_);
   
   // Check and release a partition only if it is not the last round in the epoch
   // Reason: Apply phase & next epoch requires all partitions present in the buffer
-  if(current_round_ % rounds_per_iteration_ == rounds_per_iteration_ - 1) {
+  if(outgoing_round_ % rounds_per_iteration_ == rounds_per_iteration_ - 1) {
     spdlog::trace("Last round, don't release");
     return;
   }
@@ -95,7 +94,7 @@ void DistributedBuffer::CheckAndReleaseOutgoingPartition(int partition_id) {
 
   // Partition belongs to outgoing super partition. Check interactions with own super partition only for the first round 
   // (As that will only be executed for the first round).
-  if(current_round_ % rounds_per_iteration_ == 0) {
+  if(outgoing_round_ % rounds_per_iteration_ == 0) {
     auto outgoing_partition_range = GetPartitionRange(outgoing_super_partition_id);
     for(int i = outgoing_partition_range.first; i < outgoing_partition_range.second; i++) {
       if(! (interactions_matrix_[partition_id][i] && interactions_matrix_[i][partition_id]) ) {
@@ -116,7 +115,7 @@ void DistributedBuffer::CheckAndReleaseOutgoingPartition(int partition_id) {
 
 void DistributedBuffer::InitEpoch() {
   // Initialize data members
-  current_round_ = 0;
+  outgoing_round_ = 0;
   partitions_sent_ = 0;
   fill_round_ = 1;
   epoch_complete_ = false;

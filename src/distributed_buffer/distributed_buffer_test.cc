@@ -170,6 +170,23 @@ TEST(DistributedBufferTest, GeneratePlanK104) {
   EXPECT_EQ(VerifyPlan(n, machine_state), true);
 }
 
+TEST(DistributedBufferTest, GeneratePlanK16) {
+  vvii matchings;
+  int k = 16;
+  int n = 2*k;
+  GenerateMatchings(0, n, matchings);
+  PrintMatchings(matchings);
+  // EXPECT_EQ(VerifyMatchings(n, matchings), true);
+  vvii plan;
+  vvii machine_state;
+  vector<vector<int>> partition_to_be_sent;
+  GeneratePlan(matchings, plan, machine_state, partition_to_be_sent);
+  PrintPlan(plan);
+  PrintMachineState(machine_state);
+  PrintPartitionToBeSent(partition_to_be_sent);
+  EXPECT_EQ(VerifyPlan(n, machine_state), true);
+}
+
 
 TEST(DistributedBufferTest, RunFourMachinesPageRank) {
   DistributedBufferConfig config;
