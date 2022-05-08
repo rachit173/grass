@@ -3,6 +3,7 @@
 template< typename T>
 MatMul<T>::MatMul(DistributedBuffer* buffer, std::string &input_file)
  : buffer_(buffer) , input_file_(input_file){
+    
     auto init_interactions_func = [this]() {
         this->LoadInteractions();
     };
@@ -38,14 +39,13 @@ void MatMul<T>::LoadInteractions() {
 template< typename T>
 void MatMul<T>::InitPartition(partition::Partition *partition, int partition_start, int partition_end) {
     int64_t num_partitions = buffer_->GetNumPartitions();
-
     matmul::MatrixPartition* matrix_partition = partition->mutable_matrix_partition();
-    // for(int i = 0; i < num_partitions_A_; i++) {
+
     int64_t start_row = partition_start;
     int64_t end_row = partition_end;
-    int64_t id = partition->partition_id();
     int64_t start_col = 0;
     int64_t end_col = num_cols_;    
+    int64_t id = partition->partition_id();
     
     matmul::Matrix *matrix = matrix_partition->mutable_matrix();
     matrix->set_id(id);
@@ -68,10 +68,7 @@ void MatMul<T>::InitPartition(partition::Partition *partition, int partition_sta
         }
     }
     spdlog::debug("Matrix Partition {} has a Matrix of Size: {} X {}", id, matrix->num_rows(), matrix->num_cols());
-    // }
 }
-
-
 
 template< typename T>
 void MatMul<T>::initialize() {
@@ -118,7 +115,7 @@ void MatMul<T>::processInteraction(matmul::MatrixPartition *src_partition, matmu
 
 template< typename T>
 void MatMul<T>::collectResults() {
-    buffer_->GetMatrixPartitions(matrix_partitions_);
+    std::vector<partition::Partition*> result_partitions = buffer_->CollectPartitions();
 
     matmul::Matrix *result_mat = new matmul::Matrix();
     result_mat->set_id(0);
@@ -130,20 +127,22 @@ void MatMul<T>::collectResults() {
         result_mat->mutable_state()->add_values(0);
     }
     
-    for(size_t i = 0; i < matrix_partitions_.size(); i++) {
-        matmul::Matrix matrix = matrix_partitions_[i]->matrix();
+    for(size_t idx = 0; idx < result_partitions.size(); idx++) {
+        partition::Partition *partition = result_partitions[idx];
+        matmul::MatrixPartition matrix_partition = partition->matrix_partition();
+        matmul::Matrix matrix = matrix_partition.matrix();
         uint64_t sub_matrix_num_rows = matrix.num_rows();
         uint64_t results_size = matrix.state().results_size();
+        int64_t id = matrix.id();
         for(uint64_t j = 0; j < results_size; j++) {
             matmul::MatrixState_Result results = matrix.state().results(j);
             for(int k = 0; k < results.values_size(); k++) {
                 double value = results.values(k);
-                int64_t row = i * sub_matrix_num_rows + k / sub_matrix_num_rows;
+                int64_t row = id * sub_matrix_num_rows + k / sub_matrix_num_rows;
                 int64_t col = j * sub_matrix_num_rows + k % sub_matrix_num_rows;
                 int64_t index = row * result_mat->num_cols() + col;
 
                 spdlog::trace("Setting value {} at row = {}, col = {}, index = {}", value, row, col, index);
-
                 result_mat->mutable_state()->set_values(index, value);
             }
         }
@@ -159,6 +158,8 @@ Matrix<T> &MatMul<T>::GetResultMatrix() {
 
 template< typename T>
 Matrix<T> &MatMul<T>::GetInputMatrix() {
+    buffer_->GetMatrixPartitions(matrix_partitions_);
+    
     matmul::Matrix *input_mat = new matmul::Matrix();
     input_mat->set_id(0);
     int total_size = 0;

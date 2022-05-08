@@ -34,7 +34,14 @@ message PingRequest {}
 
 message PingResponse {}
 
+message AllPartitionsRequest {}
+
+message AllPartitionsResponse {
+  repeated Partition partitions = 1;
+}
+
 service PartitionService {
   rpc GetPartition (PartitionRequest) returns (PartitionResponse) {}
   rpc Ping (PingRequest) returns (PingResponse) {}
+  rpc GetAllPartitions (AllPartitionsRequest) returns (AllPartitionsResponse) {}
 };

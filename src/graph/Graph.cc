@@ -9,6 +9,7 @@ Graph<R, A>::Graph(DistributedBuffer* buffer, std::string input_file, bool weigh
   auto init_interactions_func = [this]() {
     this->LoadInteractions();
   };
+  
   auto init_partition_func = [this](partition::Partition *partition, int partition_start, int partition_end) {
     this->InitPartition(partition, partition_start, partition_end);
   };
@@ -35,7 +36,6 @@ void Graph<R, A>::InitPartition(partition::Partition *partition, int partition_s
 
 template <typename R, typename A>
 void Graph<R, A>::LoadInteractions() {
-    
   int64_t num_vertices, num_edges, partition_size;
 
   int num_partitions = buffer_->GetNumPartitions();

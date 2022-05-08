@@ -76,6 +76,8 @@ public:
   partition::Partition* SendPartition(int partition_id);
   std::vector<int> &GetPartitionVertices(int partition_id) { return partition_vertices_[partition_id]; }
   uint64_t GetPartitionHash(int partition_id) { return hasher_(partition_id) % num_partitions_; }
+  std::vector<partition::Partition*> &GetPartitions() { return partitions_; }
+  std::vector<partition::Partition*> CollectPartitions();
   
 private:
   void LoadInteractions(init_interactions_func_t init_interactions_func);

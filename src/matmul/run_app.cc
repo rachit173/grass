@@ -59,23 +59,25 @@ int main(int argc, char* argv[]) {
     auto collect_result_duration = std::chrono::duration_cast<std::chrono::milliseconds>(collect_result_end - collect_result_start);
     spdlog::info("Collect result time: {} ms", collect_result_duration.count());
 
-    // std::ofstream outfile;
-    // filename = filename + "_" + std::to_string(buffer_config.self_rank);
-    // std::string outfilepath = outdir + "/actual_results/" + filename;
-    // outfile.open(outfilepath);
+    std::ofstream outfile;
+    filename = filename + "_" + std::to_string(buffer_config.self_rank);
+    std::string outfilepath = outdir + "/actual_results/" + filename;
+    outfile.open(outfilepath);
 
-    // if (!outfile.is_open()) {
-    //     spdlog::error("Failed to open file {}", outfilepath);
-    //     return -1;
-    // }
+    if (!outfile.is_open()) {
+        spdlog::error("Failed to open file {}", outfilepath);
+        return -1;
+    }
 
     auto write_start = std::chrono::high_resolution_clock::now();
-    attention_mm->show_input_matrix();
-    attention_mm->show_result_matrix();
-    // for (auto &vertex: vertices) {
-    //     double result = vertex.get_result();
-    //     outfile << vertex.get_id() << " " << result << std::endl;
-    // }
+    
+    Matrix_t input_matrix = attention_mm->GetInputMatrix();
+    outfile << input_matrix.to_string();    
+    outfile << std::endl;
+    
+    Matrix_t result_matrix = attention_mm->GetResultMatrix();
+    outfile << result_matrix.to_string();
+
     auto write_end = std::chrono::high_resolution_clock::now();
     auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start);
     spdlog::info("Write time: {} ms", write_duration.count());

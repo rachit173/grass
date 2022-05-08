@@ -43,6 +43,17 @@ class PartitionServiceImpl final : public PartitionService::Service {
       spdlog::debug("[gRPC] GetPartition: Partition {} for Super Partition {} sent", response->partition().partition_id(), super_partition_id);
       return grpc::Status::OK;
     }
+
+    grpc::Status GetAllPartitions(grpc::ServerContext* context, const partition::AllPartitionsRequest* request, partition::AllPartitionsResponse* response) {
+      spdlog::debug("[gRPC] GetAllPartitions: Providing all partitions.");
+      std::vector<partition::Partition*> &partitions = buffer_->GetPartitions();
+      for (partition::Partition* partition : partitions) {
+        response->add_partitions()->CopyFrom(*partition);
+      }
+
+      spdlog::debug("[gRPC] GetAllPartitions: {} partitions sent.", partitions.size());
+      return grpc::Status::OK;
+    }
 };
 
 // Send partition from hashmap to other server.
@@ -103,6 +114,36 @@ void DistributedBuffer::PingAll() {
       spdlog::trace("[gRPC] Ping to server {} succeeded", server_addresses_[r]);
     }
   }
+}
+
+std::vector<partition::Partition*> DistributedBuffer::CollectPartitions() {
+  spdlog::info("Rank: {} - Collecting Results", self_rank_);
+  std::vector<partition::Partition*> result_partitions;
+
+  // Ping all other servers
+  for (int r = 0; r < num_workers_; r++) {
+    if (r == self_rank_)  {
+      result_partitions.insert(result_partitions.end(), partitions_.begin(), partitions_.end());
+      continue;
+    }
+    grpc::ClientContext context;
+    partition::AllPartitionsResponse response;
+    partition::AllPartitionsRequest request;
+    grpc::Status status = client_stubs_[r]->GetAllPartitions(&context, request, &response);
+    if (!status.ok()) {
+      spdlog::error("[gRPC] Collecting results from server {} failed: {}", server_addresses_[r], status.error_message());
+    } 
+
+    for(int i = 0; i < response.partitions_size(); i++) {
+      partition::Partition *partition = new partition::Partition();
+      *partition = response.partitions(i);
+      result_partitions.emplace_back(partition);
+    }
+  }
+
+  spdlog::debug("[gRPC] Collected {} partitions", result_partitions.size());
+
+  return result_partitions;
 }
 
 void DistributedBuffer::StartServer() {
