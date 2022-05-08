@@ -22,7 +22,7 @@ Graph<R, A>::Graph(DistributedBuffer* buffer, std::string input_file, bool weigh
 template <typename R, typename A>
 void Graph<R, A>::InitPartition(partition::Partition *partition, int partition_start, int partition_end) {
   int64_t partition_id = partition->partition_id();
-  std::vector<int> partition_vertices = buffer->GetPartitionVertices(partition_id);
+  std::vector<int> partition_vertices = buffer_->GetPartitionVertices(partition_id);
 
   graph::VertexPartition* vertex_partition = partition->mutable_vertex_partition();
   for (auto v : partition_vertices) {

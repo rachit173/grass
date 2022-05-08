@@ -5,13 +5,11 @@
 
 #include "src/matmul/apps/attention_matmul.h"
 #include "src/utils/config_utils.h"
+#include "src/utils/logger.h"
 
 using namespace std;
 
 int main(int argc, char* argv[]) {
-    spdlog::set_level(spdlog::level::info);
-    spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
-
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " rank <config filepath>" << std::endl;
         return 1;
@@ -32,6 +30,8 @@ int main(int argc, char* argv[]) {
     int iterations = std::stoi(config["app.iterations"]);
     std::string filename = config["app.graph_file"];
     std::string filepath = input_dir + "/" + filename;
+    std::string log_level = config["app.log_level"];
+    std::string log_file = app_name + "_" + filename;
 
     // Read buffer config
     buffer_config.self_rank = std::stoi(argv[1]);
@@ -39,6 +39,13 @@ int main(int argc, char* argv[]) {
     buffer_config.num_partitions = stoi(config["buffer.num_partitions"]);
     buffer_config.num_workers = stoi(config["buffer.num_workers"]);
     buffer_config.server_addresses = split_addresses(config["buffer.server_addresses"]);
+
+    GrassLogger grass_logger = GrassLogger(log_file);
+    spdlog::set_default_logger(grass_logger.main_logger_);
+    
+    // Set log level for console
+    spdlog::level::level_enum log_level_enum = spdlog::level::from_str(log_level);
+    grass_logger.setConsoleLogLevel(log_level_enum);
 
     PartitionType partition_type = PartitionType::kMatrixPartition;
 
@@ -69,16 +76,18 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    auto write_start = std::chrono::high_resolution_clock::now();
-    
-    Matrix_t input_matrix = attention_mm->GetInputMatrix();
-    outfile << input_matrix.to_string();    
-    outfile << std::endl;
-    
-    Matrix_t result_matrix = attention_mm->GetResultMatrix();
-    outfile << result_matrix.to_string();
+    if (buffer_config.self_rank == 0) {
+        auto write_start = std::chrono::high_resolution_clock::now();
+        
+        Matrix_t input_matrix = attention_mm->GetInputMatrix();
+        outfile << input_matrix.to_string();    
+        outfile << std::endl;
+        
+        Matrix_t result_matrix = attention_mm->GetResultMatrix();
+        outfile << result_matrix.to_string();
 
-    auto write_end = std::chrono::high_resolution_clock::now();
-    auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start);
-    spdlog::info("Write time: {} ms", write_duration.count());
+        auto write_end = std::chrono::high_resolution_clock::now();
+        auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start);
+        spdlog::info("Write time: {} ms", write_duration.count());
+    }
 }

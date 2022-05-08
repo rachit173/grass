@@ -18,7 +18,6 @@ cc_binary(
   name = "run_app",
   srcs = [ "run_app.cc"],
   deps = [
-    "//src/utils:config_utils",
     "//src/apps:page_rank",
     "//src/apps:connected_comp",
     "//src/apps:shortest_path",
