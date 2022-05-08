@@ -17,6 +17,7 @@ public:
     typedef std::function<void (Matrix<T> &, Matrix<T> &, int64_t)> matmul_func_t;
     
     MatMul<T>(DistributedBuffer* buffer, std::string &input_file);
+    MatMul<T>(DistributedBuffer* buffer, std::string &input_file1, std::string &input_file2);
     void initialize();
     void startProcessing(int num_iters);
     void collectResults();

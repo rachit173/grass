@@ -17,6 +17,11 @@ MatMul<T>::MatMul(DistributedBuffer* buffer, std::string &input_file)
 }
 
 template< typename T>
+MatMul<T>::MatMul(DistributedBuffer* buffer, std::string &input_file1, std::string &input_file2) {
+    throw std::invalid_argument("Matrix multiplication is not supported for two input files");
+}
+
+template< typename T>
 void MatMul<T>::LoadInteractions() {
     int64_t num_partitions = buffer_->GetNumPartitions();
     std::ifstream file(input_file_);
@@ -115,6 +120,8 @@ void MatMul<T>::processInteraction(matmul::MatrixPartition *src_partition, matmu
 
 template< typename T>
 void MatMul<T>::collectResults() {
+    spdlog::warn("Collecting results. This may take a while...");
+    
     std::vector<partition::Partition*> result_partitions = buffer_->CollectPartitions();
 
     matmul::Matrix *result_mat = new matmul::Matrix();

@@ -21,6 +21,7 @@ message MatrixPartition {
   Matrix matrix = 1;
 }
 
+// This may be unnecessary, putting it here for completeness.
 message InteractionMatrices {
   repeated Matrix matrices = 1;
 }

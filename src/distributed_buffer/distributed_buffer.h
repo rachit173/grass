@@ -138,8 +138,6 @@ private:
   std::vector<std::string> server_addresses_;
   std::vector<std::unique_ptr<partition::PartitionService::Stub>> client_stubs_;
   std::queue<WorkUnit> interaction_queue_;
-  std::condition_variable cv_start_;
-  std::mutex mutex_start_;
   std::condition_variable cv_;
   std::mutex mutex_;
   std::condition_variable cv_send_;

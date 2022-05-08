@@ -59,12 +59,6 @@ int main(int argc, char* argv[]) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     spdlog::info("Execution time: {} ms", duration.count());
-    
-    auto collect_result_start = std::chrono::high_resolution_clock::now();
-    attention_mm->collectResults();
-    auto collect_result_end = std::chrono::high_resolution_clock::now();
-    auto collect_result_duration = std::chrono::duration_cast<std::chrono::milliseconds>(collect_result_end - collect_result_start);
-    spdlog::info("Collect result time: {} ms", collect_result_duration.count());
 
     std::ofstream outfile;
     filename = filename + "_" + std::to_string(buffer_config.self_rank);
@@ -76,18 +70,24 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    auto write_start = std::chrono::high_resolution_clock::now();
+    Matrix_t input_matrix = attention_mm->GetInputMatrix();
+    outfile << input_matrix.to_string();    
+    outfile << std::endl;
+    
+    // Collect results from other ranks
     if (buffer_config.self_rank == 0) {
-        auto write_start = std::chrono::high_resolution_clock::now();
-        
-        Matrix_t input_matrix = attention_mm->GetInputMatrix();
-        outfile << input_matrix.to_string();    
-        outfile << std::endl;
+        auto collect_result_start = std::chrono::high_resolution_clock::now();
+        attention_mm->collectResults();
+        auto collect_result_end = std::chrono::high_resolution_clock::now();
+        auto collect_result_duration = std::chrono::duration_cast<std::chrono::milliseconds>(collect_result_end - collect_result_start);
+        spdlog::info("Collect result time: {} ms", collect_result_duration.count());
         
         Matrix_t result_matrix = attention_mm->GetResultMatrix();
         outfile << result_matrix.to_string();
-
-        auto write_end = std::chrono::high_resolution_clock::now();
-        auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start);
-        spdlog::info("Write time: {} ms", write_duration.count());
     }
+
+    auto write_end = std::chrono::high_resolution_clock::now();
+    auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start);
+    spdlog::info("Write time: {} ms", write_duration.count());
 }
