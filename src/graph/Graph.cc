@@ -22,7 +22,7 @@ void Graph<R, A>::initialize() {
 template <typename R, typename A>
 void Graph<R, A>::startProcessing(const int &num_iters) {
     for (int iter = 0; iter < num_iters; iter++) {
-        spdlog::debug("Iteration: {}", iter);
+        spdlog::info("Iteration: {}", iter);
         buffer_->InitEpoch();
         // Gather Phase
         while(true){

@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     // Read app config
     std::string base_dir = config["app.base_dir"];
     std::string app_name = config["app.name"];
-    std::string outdir = base_dir + "/" + app_name;
+    std::string outdir = base_dir + "/../" + app_name;
     int iterations = std::stoi(config["app.iterations"]);
     std::string filename = config["app.graph_file"];
     std::string filepath = base_dir + "/" + filename;

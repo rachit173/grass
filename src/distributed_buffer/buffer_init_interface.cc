@@ -97,7 +97,6 @@ void DistributedBuffer::LoadInitialPartitions() {
 }
 
 void DistributedBuffer::ProduceInteractions() {
-  std::unique_lock buffer_lock(buffer_mutex_);
   for(int i = 0; i < capacity_; i++) {
     for(int j = 0; j < capacity_; j++) {
       graph::VertexPartition* src = vertex_partitions_[i];

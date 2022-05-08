@@ -14,6 +14,7 @@ void DistributedBuffer::PopulatePartitions() {
     grpc::ClientContext context;
     graph::PartitionRequest request;
     request.set_super_partition_id(target_super_partition);
+    request.set_incoming_round(fill_round_);
     graph::PartitionResponse response;
 
     grpc::Status status = client_stubs_[target_machine]->GetPartition(&context, request, &response);
@@ -33,13 +34,12 @@ void DistributedBuffer::PopulatePartitions() {
     AddPartitionToBuffer(partition);
     AddInteractions(partition);
 
-    // Fetch capacity_/2 partitions from other machines in every round
-    partitions_fetched_[fill_round_]++;
-    if(partitions_fetched_[fill_round_] == (capacity_/2)) {
+    // Fetch capacity_/2 partitions from other machines in every round and update fill round
+    partitions_fetched_++;
+    if(partitions_fetched_ == (capacity_/2)) {
       fill_round_++;
-      if(fill_round_ < rounds_per_iteration_) {
-        partitions_fetched_[fill_round_] = 0;
-      }
+      assert(fill_round_ < rounds_per_iteration_);
+      partitions_fetched_ = 0;
     }
   }
 }
@@ -68,7 +68,7 @@ void DistributedBuffer::AddInteractions(graph::VertexPartition* partition) {
   int stable_super_partition_id = GetStablePartitionId(fill_round_ - 1);
   int incoming_partition_id = partition->partition_id();
 
-  std::unique_lock<std::mutex> buffer_lock(buffer_mutex_);
+  // std::unique_lock<std::mutex> buffer_lock(buffer_mutex_); // TODO: Check if this is needed
   // Determine which half is the stable super partition
   int start_idx = 0;
   if(vertex_partitions_[start_idx] == nullptr || !BelongsToSuperPartition(vertex_partitions_[start_idx]->partition_id(), stable_super_partition_id)) {
