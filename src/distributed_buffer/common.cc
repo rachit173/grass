@@ -68,3 +68,11 @@ std::pair<int, int> DistributedBuffer::GetPartitionRange(int super_partition_id)
   int partition_end = (super_partition_id + 1) * (capacity_/2);
   return std::make_pair(partition_start, partition_end);
 }
+
+void DistributedBuffer::RearrangeBuffer() {
+  // Arrange vertex partitions in order of machine state
+  int half_cap = capacity_/2;
+  for(int i = 0; i < capacity_/2; i++) {
+    std::swap(vertex_partitions_[i], vertex_partitions_[half_cap + i]);
+  }
+}

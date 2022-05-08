@@ -37,8 +37,8 @@ void DistributedBuffer::PopulatePartitions() {
     // Fetch capacity_/2 partitions from other machines in every round and update fill round
     partitions_fetched_++;
     if(partitions_fetched_ == (capacity_/2)) {
-      fill_round_++;
       assert(fill_round_ < rounds_per_iteration_);
+      fill_round_++;
       partitions_fetched_ = 0;
     }
   }

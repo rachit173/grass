@@ -13,6 +13,9 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
+    spdlog::set_level(spdlog::level::info);
+    spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
+
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " rank <config filepath>" << std::endl;
         return 1;

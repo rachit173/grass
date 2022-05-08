@@ -141,6 +141,12 @@ void DistributedBuffer::InitEpoch() {
   } else { // Assume that the matchings are already generated as the buffer has a certain state
     vector<pair<int, int>> current_matching = machine_state_.back();
     vector<pair<int, int>> current_machine_state = machine_state_.back();
+    // Rearrange the buffer to reflect expected machine state if flipped
+    if(current_machine_state[self_rank_] != current_partitions) {
+      RearrangeBuffer();
+      current_partitions = make_pair(vertex_partitions_[0]->partition_id()/ (capacity_/2),
+                                   vertex_partitions_[capacity_/2]->partition_id()/ (capacity_/2));
+    }
     assert(current_machine_state[self_rank_] == current_partitions);
     // Get the next matchings in a cyclic way starting from the current matching
     matchings_.pop_back();

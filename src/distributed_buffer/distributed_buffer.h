@@ -83,6 +83,7 @@ private:
   std::pair<int, int> GetPartitionRange(int super_partition_id);
   void ProduceInteractions();
   void NotifyEpochComplete();
+  void RearrangeBuffer();
 
   int64_t num_vertices_;
   int64_t num_edges_;
