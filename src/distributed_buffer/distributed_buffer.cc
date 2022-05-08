@@ -38,7 +38,7 @@ void DistributedBuffer::ReleasePartition(int partition_id) {
     };
     auto partition_iter = std::find_if(partitions_.begin(), partitions_.end(), comp_partition);
     if (partition_iter == partitions_.end()) {
-      spdlog::error("Partition {} not found. Exiting..", partition_id);
+      spdlog::debug("Partition {} not found. Exiting..", partition_id);
       return;
     }
     partition = *partition_iter;
@@ -57,8 +57,8 @@ void DistributedBuffer::ReleasePartition(int partition_id) {
 
 void DistributedBuffer::CheckAndReleaseAllPartitions() {
   for(int i = 0; i < capacity_; i++) {
-    if(vertex_partitions_[i] == nullptr) continue;
-    CheckAndReleaseOutgoingPartition(vertex_partitions_[i]->partition_id());
+    if(partitions_[i] == nullptr) continue;
+    CheckAndReleaseOutgoingPartition(partitions_[i]->partition_id());
   }
 }
 
@@ -143,8 +143,8 @@ void DistributedBuffer::InitEpoch() {
     // Rearrange the buffer to reflect expected machine state if flipped
     if(current_machine_state[self_rank_] != current_partitions) {
       RearrangeBuffer();
-      current_partitions = make_pair(vertex_partitions_[0]->partition_id()/ (capacity_/2),
-                                   vertex_partitions_[capacity_/2]->partition_id()/ (capacity_/2));
+      current_partitions = make_pair(partitions_[0]->partition_id()/ (capacity_/2),
+                                   partitions_[capacity_/2]->partition_id()/ (capacity_/2));
     }
     assert(current_machine_state[self_rank_] == current_partitions);
     // Get the next matchings in a cyclic way starting from the current matching

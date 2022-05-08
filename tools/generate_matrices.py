@@ -58,8 +58,8 @@ if __name__ == '__main__':
     m = int(sys.argv[1])
     n = int(sys.argv[2])
 
-    input_matrix_filename = os.path.join(BASE_DIR, "input_matrix.txt")
-    result_matrix_filename = os.path.join(BASE_DIR, "result_matrix.txt")
+    input_matrix_filename = os.path.join(BASE_DIR, "matrix_{}_{}_input.txt".format(m, n))
+    result_matrix_filename = os.path.join(BASE_DIR, "matrix_{}_{}_output.txt".format(m, n))
 
     input_matrix = create_matrix(m, n)
     matB = transpose_matrix(input_matrix)

@@ -3,3 +3,4 @@ graphs/web-BerkStan.txt
 **/expected_results/
 verifier
 diff
+matmul/matrix_*

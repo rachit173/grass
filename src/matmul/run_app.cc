@@ -30,8 +30,6 @@ int main(int argc, char* argv[]) {
     int iterations = std::stoi(config["app.iterations"]);
     std::string filename = config["app.graph_file"];
     std::string filepath = input_dir + "/" + filename;
-    std::string log_level = config["app.log_level"];
-    std::string log_file = app_name + "_" + filename;
 
     // Read buffer config
     buffer_config.self_rank = std::stoi(argv[1]);
@@ -40,6 +38,8 @@ int main(int argc, char* argv[]) {
     buffer_config.num_workers = stoi(config["buffer.num_workers"]);
     buffer_config.server_addresses = split_addresses(config["buffer.server_addresses"]);
 
+    std::string log_level = config["app.log_level"];
+    std::string log_file = app_name + "_" + filename + "_" + std::to_string(buffer_config.self_rank);
     GrassLogger grass_logger = GrassLogger(log_file);
     spdlog::set_default_logger(grass_logger.main_logger_);
     
