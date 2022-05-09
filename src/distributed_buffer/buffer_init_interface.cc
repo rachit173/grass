@@ -44,7 +44,7 @@ void DistributedBuffer::LoadInteractionEdges(std::string& graph_file, bool weigh
     }
     ss << "\n";
   }
-  spdlog::info("Edge partition sizes: \n{}", ss.str());
+  spdlog::trace("Edge partition sizes: \n{}", ss.str());
 
   graph_file_stream.close();
 }
@@ -97,7 +97,6 @@ void DistributedBuffer::LoadInitialPartitions() {
 }
 
 void DistributedBuffer::ProduceInteractions() {
-  std::unique_lock buffer_lock(buffer_mutex_);
   for(int i = 0; i < capacity_; i++) {
     for(int j = 0; j < capacity_; j++) {
       graph::VertexPartition* src = vertex_partitions_[i];

@@ -14,6 +14,13 @@ class PartitionServiceImpl final : public PartitionService::Service {
     
     grpc::Status GetPartition(grpc::ServerContext* context, const graph::PartitionRequest* request, graph::PartitionResponse* response) {
       int super_partition_id = request->super_partition_id();
+      int incoming_round = request->incoming_round();
+
+      // Without sending the partition, current round cannot increase --> incoming_round >= current_round
+      if(incoming_round != buffer_->GetOutgoingRound() + 1) {
+        return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, "Incoming round does not match provider round + 1");
+      }
+
       spdlog::debug("[gRPC] GetPartition: Providing Super Partition: {}", super_partition_id);
       graph::VertexPartition* partition = buffer_->SendPartition(super_partition_id);
       response->set_super_partition_id(super_partition_id);
@@ -28,23 +35,43 @@ class PartitionServiceImpl final : public PartitionService::Service {
 
 // Send partition from hashmap to other server.
 graph::VertexPartition* DistributedBuffer::SendPartition(int super_partition_id) {
-    graph::VertexPartition* partition;
+    graph::VertexPartition* partition = nullptr;
+    bool round_incremented = false;
     while(true) {
+      {
         std::unique_lock<std::mutex> lock(mutex_send_);
         for(auto it: done_partitions_) {
-            int partition_id = it.first;
-            if(BelongsToSuperPartition(partition_id, super_partition_id)) {
-                partition = it.second;
-                spdlog::debug("[gRPC] Sending Partition {} for Super Partition {}", partition->partition_id(), super_partition_id);
-                done_partitions_.erase(it.first);
-                if(done_partitions_.empty()){
-                  NotifyPartitionSent(); // Notify the main thread that the hashmap of to-be-sent partitions is empty
-                }
-                return partition;
-            }
+          int partition_id = it.first;
+          if(!BelongsToSuperPartition(partition_id, super_partition_id)) continue;
+          
+          partition = it.second;
+          spdlog::debug("[gRPC] Sending Partition {} for Super Partition {}", partition->partition_id(), super_partition_id);
+          done_partitions_.erase(it.first);
+
+          partitions_sent_++;
+          // Update round number when 1 super partition is sent
+          if(partitions_sent_ == capacity_/2) {
+            outgoing_round_++;
+            partitions_sent_ = 0;
+            round_incremented = true;
+          }
+          break;
         }
-        spdlog::trace("[gRPC] Waiting for free Partition in Super Partition {}", super_partition_id);
-        cv_send_.wait(lock);
+        if(partition == nullptr) {  
+          spdlog::trace("[gRPC] Waiting for free Partition in Super Partition {}", super_partition_id);
+          cv_send_.wait(lock);
+        }
+      }
+      
+      // Release all possible partitions (which are done executing previously) when round is incremented
+      if(round_incremented) {
+        CheckAndReleaseAllPartitions();
+      }
+      if(IsEpochComplete()) {
+        NotifyEpochComplete();
+      }
+
+      if(partition != nullptr) return partition;
     }
 }
 
@@ -59,9 +86,9 @@ void DistributedBuffer::PingAll() {
     graph::PingRequest request;
     grpc::Status status = client_stubs_[r]->Ping(&context, request, &response);
     if (!status.ok()) {
-      spdlog::error("[gRPC] Ping to server {} failed: {}", server_addresses_[r], status.error_message());
+      spdlog::trace("[gRPC] Ping to server {} failed: {}", server_addresses_[r], status.error_message());
     } else {
-      spdlog::info("[gRPC] Ping to server {} succeeded", server_addresses_[r]);
+      spdlog::trace("[gRPC] Ping to server {} succeeded", server_addresses_[r]);
     }
   }
 }
@@ -92,14 +119,21 @@ void DistributedBuffer::SetupClientStubs() {
   }
 }
 
-void DistributedBuffer::NotifyPartitionSent() {
-  std::unique_lock<std::mutex> lock(mutex_epoch_completion_);
-  cv_epoch_completion_.notify_one();
+void DistributedBuffer::NotifyEpochComplete() {
+  {
+    std::unique_lock<std::mutex> lock(mutex_epoch_completion_);
+    cv_epoch_completion_.notify_one();
+  }
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.notify_one();
+  }
 }
 
 // Wait for all partitions to be sent from the hashmap done_partitions_ (Sent by the gRPC thread)
 void DistributedBuffer::WaitForEpochCompletion() {
-  while(!done_partitions_.empty()) {
+  while(!IsEpochComplete()) {
+    spdlog::warn("Should not be here"); 
     std::unique_lock<std::mutex> lock(mutex_epoch_completion_);
     cv_epoch_completion_.wait(lock);
   }

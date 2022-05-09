@@ -56,6 +56,7 @@ public:
   int64_t GetPartitionSize() { return partition_size_; }
   int64_t GetNumVertices() { return num_vertices_; }
   int64_t GetNumEdges() { return num_edges_; }
+  int64_t GetOutgoingRound() { return outgoing_round_; }
   void WaitForEpochCompletion();
   // Used by Partition service
   graph::VertexPartition* SendPartition(int partition_id);
@@ -68,10 +69,11 @@ private:
   void SetupClientStubs();
   int GetStablePartitionId(int round);
   void ReleasePartition(int partition_id);
-  void CheckAndReleaseOutgoingPartition(int outgoing_super_partition_id, int stable_super_partition_id, int partition_id);
+  void CheckAndReleaseOutgoingPartition(int partition_id);
+  void CheckAndReleaseAllPartitions();
   void AddPartitionToBuffer(graph::VertexPartition* partition);
   bool IsEpochComplete();
-  bool IsRoundComplete();
+  bool IsInteractionsDone();
   bool BelongsToSuperPartition(int partition_id, int super_partition_id);
   void PopulatePartitions();
   void AddInteractions(graph::VertexPartition* partition); 
@@ -80,7 +82,8 @@ private:
   void InitSuperPartition(std::vector<graph::VertexPartition*>& super_partition, int super_partition_id);
   std::pair<int, int> GetPartitionRange(int super_partition_id);
   void ProduceInteractions();
-  void NotifyPartitionSent();
+  void NotifyEpochComplete();
+  void RearrangeBuffer();
 
   int64_t num_vertices_;
   int64_t num_edges_;
@@ -91,8 +94,10 @@ private:
   int capacity_;
   int num_workers_;
   int partition_size_;
-  int current_round_;
+  int outgoing_round_;
+  int partitions_sent_;
   int fill_round_;
+  int partitions_fetched_;
   int buffer_size_;
   bool epoch_complete_;
   std::hash<int> hasher_;
@@ -108,7 +113,6 @@ private:
   std::vector<graph::VertexPartition*> partitions_second_half_;
   std::vector<graph::VertexPartition*> vertex_partitions_;
   std::unordered_map<int, graph::VertexPartition*> done_partitions_;
-  std::vector<int> partitions_fetched_;
   std::vector<std::vector<bool>> interactions_matrix_;
   std::vector<std::pair<int, int>> super_partitiion_order_;
   std::vector<std::string> server_addresses_;

@@ -13,6 +13,9 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
+    spdlog::set_level(spdlog::level::info);
+    spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
+
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " rank <config filepath>" << std::endl;
         return 1;
@@ -28,12 +31,10 @@ int main(int argc, char* argv[]) {
     // Read app config
     std::string base_dir = config["app.base_dir"];
     std::string app_name = config["app.name"];
-    std::string outdir = base_dir + "/" + app_name;
+    std::string out_dir = config["app.out_dir"] + "/" + app_name;
     int iterations = std::stoi(config["app.iterations"]);
     std::string filename = config["app.graph_file"];
     std::string filepath = base_dir + "/" + filename;
-    std::string log_level = config["app.log_level"];
-    std::string log_file = app_name + "_" + filename;
 
     // Read buffer config
     buffer_config.self_rank = std::stoi(argv[1]);
@@ -42,6 +43,8 @@ int main(int argc, char* argv[]) {
     buffer_config.num_workers = stoi(config["buffer.num_workers"]);
     buffer_config.server_addresses = split_addresses(config["buffer.server_addresses"]);
 
+    std::string log_level = config["app.log_level"];
+    std::string log_file = app_name + "_" + filename + to_string(buffer_config.self_rank);
     GrassLogger grass_logger = GrassLogger(log_file);
     spdlog::set_default_logger(grass_logger.main_logger_);
     
@@ -77,7 +80,7 @@ int main(int argc, char* argv[]) {
 
     std::ofstream outfile;
     filename = filename + "_" + std::to_string(buffer_config.self_rank);
-    outfile.open(outdir + "/actual_results/" + filename);
+    outfile.open(out_dir + "/actual_results/" + filename);
 
     auto write_start = std::chrono::high_resolution_clock::now();
     for (auto &vertex: vertices) {
