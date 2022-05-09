@@ -3,6 +3,8 @@ ps -aux | grep run_app | awk '{print $2}' | xargs kill -9
 
 NUM_WORKERS=$1
 ITERS=$2
+CAPACITY=$3
+GRAPH_DATA=$4
 if [ -z $NUM_WORKERS ]; then
   NUM_WORKERS=2
 fi
@@ -72,11 +74,13 @@ RunCore () {
 RunK() {
 local num_workers=$1
 local iters=$2
+local capacity=$3
+local graph_data=$4
 GenerateServerAddresses $num_workers
 echo "Runnning single machine, $num_workers cores"
 rm /mnt/Work/grass/tmp_exec.conf
 cat >> /mnt/Work/grass/tmp_exec.conf << EOF
-buffer.capacity=4
+buffer.capacity=$capacity
 buffer.num_partitions=$((num_workers*4))
 buffer.num_workers=$num_workers
 buffer.server_addresses=$addr
@@ -85,7 +89,7 @@ app.name=pagerank
 app.input_dir=/mnt/Work/grass/resources/graphs
 app.output_dir=/mnt/Work/grass/resources
 app.iterations=$iters
-app.graph_file=web-BerkStan.txt
+app.graph_file=$graph_data
 app.log_level=info
 EOF
 for (( c=0; c<$num_workers; c++ ))
@@ -96,4 +100,4 @@ wait
 }
 
 KillAll
-RunK $NUM_WORKERS $ITERS
+RunK $NUM_WORKERS $ITERS $CAPACITY $GRAPH_DATA

@@ -48,4 +48,8 @@ sed -i '1s/^/1048575\n/' /mnt/Work/grass/resources/graphs/edges_2_20_e_32.txt
 # 2^20 nodes graph with average 64 edges per node
 ./generator_omp 20 -e 64 -o /mnt/Work/grass/resources/graphs/edges_2_20_e_64.txt
 sed -i '1s/^/1048575\n/' /mnt/Work/grass/resources/graphs/edges_2_20_e_64.txt
+
+# 2^24 nodes graph with average 64 edges per node
+./generator_omp 24 -e 64 -o /mnt/Work/grass/resources/graphs/edges_2_24_e_64.txt
+sed -i '1s/^/16777215\n/' /mnt/Work/grass/resources/graphs/edges_2_24_e_64.txt
 popd

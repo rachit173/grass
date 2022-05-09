@@ -55,8 +55,10 @@ int main(int argc, char* argv[]) {
     
     PartitionType partition_type = PartitionType::kVertexPartition;
 
-    auto start = std::chrono::high_resolution_clock::now();
+
+    auto p1 = std::chrono::high_resolution_clock::now();
     DistributedBuffer* buffer = new DistributedBuffer(buffer_config, partition_type);
+    auto p2 = std::chrono::high_resolution_clock::now();
     Degree* degree = new Degree(buffer, filepath);
     PageRank* pagerank = new PageRank(buffer, filepath);
 
@@ -70,9 +72,11 @@ int main(int argc, char* argv[]) {
     pagerank->initialize();
     pagerank->startProcessing(iterations);
 
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    spdlog::info("Execution time: {} ms", duration.count());
+    auto p3 = std::chrono::high_resolution_clock::now();
+    auto load_data_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p2 - p1);
+    auto process_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p3 - p2);
+    spdlog::info("Load Data time: {} ms", load_data_duration.count());
+    spdlog::info("Execution time: {} ms", process_duration.count());
     
     auto collect_result_start = std::chrono::high_resolution_clock::now();
     pagerank->collectResults();
