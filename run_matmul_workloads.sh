@@ -24,7 +24,7 @@ KillAll() {
 }
 
 NUM_ROWS=160
-NUM_COLS=1024
+NUM_COLS=240
 INPUT_FILE=matrix_${NUM_ROWS}_${NUM_COLS}_input.txt
 
 GenerateMatrix() {

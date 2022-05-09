@@ -70,7 +70,6 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    auto write_start = std::chrono::high_resolution_clock::now();
     Matrix_t input_matrix = attention_mm->GetInputMatrix();
     outfile << input_matrix.to_string();    
     outfile << std::endl;
@@ -85,9 +84,8 @@ int main(int argc, char* argv[]) {
         
         Matrix_t result_matrix = attention_mm->GetResultMatrix();
         outfile << result_matrix.to_string();
+    } else {
+        spdlog::info("Waiting for results from rank 0");
+        sleep(5);
     }
-
-    auto write_end = std::chrono::high_resolution_clock::now();
-    auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start);
-    spdlog::info("Write time: {} ms", write_duration.count());
 }
