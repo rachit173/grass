@@ -8,6 +8,9 @@ cc_library(
   deps = [
     "@lapackpp//:lapackpp",
     "//src/matmul/lib:matmul",
+  ],   
+  copts = [
+    "-std=c++17"
   ]
 )
 

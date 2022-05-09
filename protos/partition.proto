@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package partition;
+
+import "protos/graph.proto";
+import "protos/matmul.proto";
+
+message Partition {
+  int32 partition_id = 1;
+
+  oneof partition_type {
+    graph.VertexPartition vertex_partition = 2;
+    matmul.MatrixPartition matrix_partition = 3;
+  }
+}
+
+message Interaction {
+  oneof interaction_type {
+    graph.InteractionEdges interaction_edges = 1;
+    matmul.InteractionMatrices interaction_matrices = 2;
+  }
+}
+
+message PartitionRequest {
+  int32 super_partition_id = 1;
+  int32 incoming_round = 2;
+}
+
+message PartitionResponse {
+  int32 super_partition_id = 1;
+  Partition partition = 2;
+}
+
+message PingRequest {}
+
+message PingResponse {}
+
+message AllPartitionsRequest {}
+
+message AllPartitionsResponse {
+  repeated Partition partitions = 1;
+}
+
+service PartitionService {
+  rpc GetPartition (PartitionRequest) returns (PartitionResponse) {}
+  rpc Ping (PingRequest) returns (PingResponse) {}
+  rpc GetAllPartitions (AllPartitionsRequest) returns (AllPartitionsResponse) {}
+};

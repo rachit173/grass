@@ -6,7 +6,7 @@
 template <typename T>
 class BaseMatMulApp : public MatMul<T> {
 protected:
-    BaseMatMulApp(int num_partitions_A, std::string &matA_input_file): MatMul<T>(num_partitions_A, matA_input_file) {}
+    BaseMatMulApp(DistributedBuffer* buffer, std::string &input_file): MatMul<T>(buffer, input_file) {}
 
 ///////////////////////// Static Methods to be implemented ///////////////////////////////
 //  static void matmul(Matrix<T> &matrix_A, Matrix<T> &matrix_B, int64_t result_idx)

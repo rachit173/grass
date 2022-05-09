@@ -73,6 +73,6 @@ void DistributedBuffer::RearrangeBuffer() {
   // Arrange vertex partitions in order of machine state
   int half_cap = capacity_/2;
   for(int i = 0; i < capacity_/2; i++) {
-    std::swap(vertex_partitions_[i], vertex_partitions_[half_cap + i]);
+    std::swap(partitions_[i], partitions_[half_cap + i]);
   }
 }

@@ -2,7 +2,7 @@
 #define VERTEX_H
 
 #include <grpcpp/grpcpp.h>
-#include "protos/graph.grpc.pb.h"
+#include "protos/partition.grpc.pb.h"
 
 template <typename R, typename A> // For <result, accumulator>
 class Vertex {

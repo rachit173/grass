@@ -1,6 +1,6 @@
 #include "distributed_buffer.h"
 
-using graph::PartitionService;
+using partition::PartitionService;
 using namespace std;
 
 class PartitionServiceImpl final : public PartitionService::Service {
@@ -8,11 +8,11 @@ class PartitionServiceImpl final : public PartitionService::Service {
     DistributedBuffer* buffer_;
   public:
     explicit PartitionServiceImpl(DistributedBuffer* buffer) : buffer_(buffer) {}
-    grpc::Status Ping(grpc::ServerContext* context, const graph::PingRequest* request, graph::PingResponse* response) {
+    grpc::Status Ping(grpc::ServerContext* context, const partition::PingRequest* request, partition::PingResponse* response) {
       return grpc::Status::OK;
     }
     
-    grpc::Status GetPartition(grpc::ServerContext* context, const graph::PartitionRequest* request, graph::PartitionResponse* response) {
+    grpc::Status GetPartition(grpc::ServerContext* context, const partition::PartitionRequest* request, partition::PartitionResponse* response) {
       int super_partition_id = request->super_partition_id();
       int incoming_round = request->incoming_round();
 
@@ -22,20 +22,43 @@ class PartitionServiceImpl final : public PartitionService::Service {
       }
 
       spdlog::debug("[gRPC] GetPartition: Providing Super Partition: {}", super_partition_id);
-      graph::VertexPartition* partition = buffer_->SendPartition(super_partition_id);
+      partition::Partition* partition = buffer_->SendPartition(super_partition_id);
+      PartitionType partition_type = buffer_->GetPartitionType();
       response->set_super_partition_id(super_partition_id);
       response->mutable_partition()->set_partition_id(partition->partition_id());
-      response->mutable_partition()->mutable_vertices()->CopyFrom(partition->vertices());
-      
+
+      switch (partition_type) {
+        case PartitionType::kVertexPartition:
+          response->mutable_partition()->mutable_vertex_partition()->CopyFrom(partition->vertex_partition());
+          break;
+        case PartitionType::kMatrixPartition:
+          response->mutable_partition()->mutable_matrix_partition()->CopyFrom(partition->matrix_partition());
+          break;
+        default:
+          spdlog::error("[gRPC] GetPartition: Partition type not supported: {}", partition_type);
+          exit(1);
+      }
+
       delete partition;
       spdlog::debug("[gRPC] GetPartition: Partition {} for Super Partition {} sent", response->partition().partition_id(), super_partition_id);
+      return grpc::Status::OK;
+    }
+
+    grpc::Status GetAllPartitions(grpc::ServerContext* context, const partition::AllPartitionsRequest* request, partition::AllPartitionsResponse* response) {
+      spdlog::debug("[gRPC] GetAllPartitions: Providing all partitions.");
+      std::vector<partition::Partition*> &partitions = buffer_->GetPartitions();
+      for (partition::Partition* partition : partitions) {
+        response->add_partitions()->CopyFrom(*partition);
+      }
+
+      spdlog::debug("[gRPC] GetAllPartitions: {} partitions sent.", partitions.size());
       return grpc::Status::OK;
     }
 };
 
 // Send partition from hashmap to other server.
-graph::VertexPartition* DistributedBuffer::SendPartition(int super_partition_id) {
-    graph::VertexPartition* partition = nullptr;
+partition::Partition* DistributedBuffer::SendPartition(int super_partition_id) {
+    partition::Partition* partition = nullptr;
     bool round_incremented = false;
     while(true) {
       {
@@ -82,8 +105,8 @@ void DistributedBuffer::PingAll() {
   for (int r = 0; r < num_workers_; r++) {
     if (r == self_rank_) continue;
     grpc::ClientContext context;
-    graph::PingResponse response;
-    graph::PingRequest request;
+    partition::PingResponse response;
+    partition::PingRequest request;
     grpc::Status status = client_stubs_[r]->Ping(&context, request, &response);
     if (!status.ok()) {
       spdlog::trace("[gRPC] Ping to server {} failed: {}", server_addresses_[r], status.error_message());
@@ -91,6 +114,36 @@ void DistributedBuffer::PingAll() {
       spdlog::trace("[gRPC] Ping to server {} succeeded", server_addresses_[r]);
     }
   }
+}
+
+std::vector<partition::Partition*> DistributedBuffer::CollectPartitions() {
+  spdlog::info("Rank: {} - Collecting Results", self_rank_);
+  std::vector<partition::Partition*> result_partitions;
+
+  // Ping all other servers
+  for (int r = 0; r < num_workers_; r++) {
+    if (r == self_rank_)  {
+      result_partitions.insert(result_partitions.end(), partitions_.begin(), partitions_.end());
+      continue;
+    }
+    grpc::ClientContext context;
+    partition::AllPartitionsResponse response;
+    partition::AllPartitionsRequest request;
+    grpc::Status status = client_stubs_[r]->GetAllPartitions(&context, request, &response);
+    if (!status.ok()) {
+      spdlog::error("[gRPC] Collecting results from server {} failed: {}", server_addresses_[r], status.error_message());
+    } 
+
+    for(int i = 0; i < response.partitions_size(); i++) {
+      partition::Partition *partition = new partition::Partition();
+      *partition = response.partitions(i);
+      result_partitions.emplace_back(partition);
+    }
+  }
+
+  spdlog::debug("[gRPC] Collected {} partitions", result_partitions.size());
+
+  return result_partitions;
 }
 
 void DistributedBuffer::StartServer() {
@@ -138,3 +191,4 @@ void DistributedBuffer::WaitForEpochCompletion() {
     cv_epoch_completion_.wait(lock);
   }
 }
+

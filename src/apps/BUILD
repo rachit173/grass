@@ -6,7 +6,7 @@ cc_library(
   srcs = ["page_rank.cc"],
   hdrs = ["base_app.h", "page_rank.h"],
   deps = [
-    "//protos:graph_cc_grpc",
+    "//protos:partition_cc_grpc",
     "//src/graph:graph",
   ],
   copts = [
@@ -19,7 +19,7 @@ cc_library(
   srcs = ["shortest_path.cc"],
   hdrs = ["base_app.h", "shortest_path.h"],
   deps = [
-    "//protos:graph_cc_grpc",
+    "//protos:partition_cc_grpc",
     "//src/graph:graph",
   ],
   copts = [
@@ -32,7 +32,7 @@ cc_library(
   srcs = ["connected_comp.cc"],
   hdrs = ["base_app.h", "connected_comp.h"],
   deps = [
-    "//protos:graph_cc_grpc",
+    "//protos:partition_cc_grpc",
     "//src/graph:graph",
   ],
   copts = [
@@ -45,7 +45,7 @@ cc_library(
   srcs = ["degree.cc"],
   hdrs = ["base_app.h", "page_rank.h", "degree.h"],
   deps = [
-    "//protos:graph_cc_grpc",
+    "//protos:partition_cc_grpc",
     "//src/graph:graph",
     ":page_rank",
   ],

@@ -2,7 +2,7 @@
 #include <string>
 #include <fstream>
 #include <spdlog/spdlog.h>
-#include "protos/graph.grpc.pb.h"
+#include "protos/partition.grpc.pb.h"
 #include "src/apps/page_rank.h"
 #include "src/apps/connected_comp.h"
 #include "src/apps/shortest_path.h"
@@ -29,12 +29,13 @@ int main(int argc, char* argv[]) {
     }
 
     // Read app config
-    std::string base_dir = config["app.base_dir"];
+    std::string input_dir = config["app.input_dir"];
+    std::string output_dir = config["app.output_dir"];
     std::string app_name = config["app.name"];
-    std::string out_dir = config["app.out_dir"] + "/" + app_name;
+    std::string outdir = output_dir + "/" + app_name;
     int iterations = std::stoi(config["app.iterations"]);
     std::string filename = config["app.graph_file"];
-    std::string filepath = base_dir + "/" + filename;
+    std::string filepath = input_dir + "/" + filename;
 
     // Read buffer config
     buffer_config.self_rank = std::stoi(argv[1]);
@@ -51,11 +52,13 @@ int main(int argc, char* argv[]) {
     // Set log level for console
     spdlog::level::level_enum log_level_enum = spdlog::level::from_str(log_level);
     grass_logger.setConsoleLogLevel(log_level_enum);
+    
+    PartitionType partition_type = PartitionType::kVertexPartition;
 
     auto start = std::chrono::high_resolution_clock::now();
-    DistributedBuffer* buffer = new DistributedBuffer(buffer_config, filepath);
-    Degree* degree = new Degree(buffer);
-    PageRank* pagerank = new PageRank(buffer);
+    DistributedBuffer* buffer = new DistributedBuffer(buffer_config, partition_type);
+    Degree* degree = new Degree(buffer, filepath);
+    PageRank* pagerank = new PageRank(buffer, filepath);
 
     // app = new ShortestPath(buffer, 1);
     // app = new ConnectedComponents(buffer);
@@ -80,7 +83,13 @@ int main(int argc, char* argv[]) {
 
     std::ofstream outfile;
     filename = filename + "_" + std::to_string(buffer_config.self_rank);
-    outfile.open(out_dir + "/actual_results/" + filename);
+    std::string outfilepath = outdir + "/actual_results/" + filename;
+    outfile.open(outfilepath);
+
+    if (!outfile.is_open()) {
+        spdlog::error("Failed to open file {}", outfilepath);
+        return -1;
+    }
 
     auto write_start = std::chrono::high_resolution_clock::now();
     for (auto &vertex: vertices) {

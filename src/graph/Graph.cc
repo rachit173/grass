@@ -1,14 +1,105 @@
 #include "Graph.h"
 
 template <typename R, typename A>
-Graph<R, A>::Graph(DistributedBuffer* buffer) {
-    buffer_ = buffer;
-    vertex_partitions_ = buffer_->GetPartitions();
+Graph<R, A>::Graph(DistributedBuffer* buffer, std::string input_file, bool weighted_edges)
+: input_file_(input_file),
+  weighted_edges_(weighted_edges),
+  buffer_(buffer) {
+
+  auto init_interactions_func = [this]() {
+    this->LoadInteractions();
+  };
+  
+  auto init_partition_func = [this](partition::Partition *partition, int partition_start, int partition_end) {
+    this->InitPartition(partition, partition_start, partition_end);
+  };
+
+  buffer_->Load(init_interactions_func, init_partition_func);
+  buffer_->Start();
+  buffer_->GetVertexPartitions(vertex_partitions_);
+}
+
+template <typename R, typename A>
+void Graph<R, A>::InitPartition(partition::Partition *partition, int partition_start, int partition_end) {
+  int64_t partition_id = partition->partition_id();
+  std::vector<int> partition_vertices = buffer_->GetPartitionVertices(partition_id);
+
+  graph::VertexPartition* vertex_partition = partition->mutable_vertex_partition();
+  for (auto v : partition_vertices) {
+      graph::Vertex* vertex = vertex_partition->add_vertices();
+      // Default initialization for Vertex
+      vertex->set_id(v);
+      vertex->mutable_degree()->set_out_degree(0);
+      vertex->mutable_degree()->set_in_degree(0);
+  }
+}
+
+template <typename R, typename A>
+void Graph<R, A>::LoadInteractions() {
+  int64_t num_vertices, num_edges, partition_size;
+
+  int num_partitions = buffer_->GetNumPartitions();
+  std::vector<std::vector<partition::Interaction>> &interactions = buffer_->GetInteractions();
+
+  if (!interactions.empty()) {
+    spdlog::debug("Interactions are already loaded");
+    return;
+  }
+
+  interactions = std::vector<std::vector<partition::Interaction>>(num_partitions, std::vector<partition::Interaction>(num_partitions));
+
+  std::ifstream graph_file_stream(input_file_);
+  if (!graph_file_stream.is_open()) {
+    spdlog::error("Could not open file {}. Exiting...", input_file_);
+    exit(1);
+  }
+  
+  graph_file_stream >> num_vertices;
+  partition_size = (int)(ceil((double) num_vertices / (double)num_partitions));
+  spdlog::info("Partition size: {}", partition_size);
+  int src, dst;
+  double weight = 1.0;
+  
+  graph::Edge* edge = new graph::Edge();
+  while (graph_file_stream >> src >> dst) {
+    // Read and store edge
+    edge->set_src(src);
+    edge->set_dst(dst);
+    if(weighted_edges_) {
+        graph_file_stream >> weight;
+    }
+    edge->set_weight(weight);
+
+    // Put edges in Interaction edge buckets
+    int src_partition = buffer_->GetPartitionHash(src);
+    int dst_partition = buffer_->GetPartitionHash(dst);
+
+    graph::InteractionEdges *graph_interaction_edges = interactions[src_partition][dst_partition].mutable_interaction_edges();
+    graph::Edge *interEdge = graph_interaction_edges->add_edges();
+    *interEdge = *edge;
+    num_edges++;
+  }
+
+  std::stringstream ss;
+  for(int i = 0; i < num_partitions; i++) {
+    for(int j = 0; j < num_partitions; j++) {
+      graph::InteractionEdges graph_interaction_edges = interactions[i][j].interaction_edges();
+      ss << graph_interaction_edges.edges_size() << ",";
+    }
+    ss << "\n";
+  }
+  spdlog::trace("Edge partition sizes: \n{}", ss.str());
+
+  graph_file_stream.close();
+
+  buffer_->SetNumEdges(num_edges);
+  buffer_->SetNumVertices(num_vertices);
+  buffer_->SetPartitionSize(partition_size);
 }
 
 template <typename R, typename A>
 void Graph<R, A>::initialize() {
-    vertex_partitions_ = buffer_->GetPartitions();
+    buffer_->GetVertexPartitions(vertex_partitions_);
     int num_local_partitions = vertex_partitions_.size();
     for (int i = 0; i < num_local_partitions; i++) {
         for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {
@@ -33,16 +124,20 @@ void Graph<R, A>::startProcessing(const int &num_iters) {
             }
             
             WorkUnit interaction = *opt_interaction;
-            graph::VertexPartition* src = interaction.src();
-            graph::VertexPartition* dst = interaction.dst();
-            graph::InteractionEdges* edges = interaction.edges();
-            spdlog::trace("Processing interaction: src: {}, dst: {}", src->partition_id(), dst->partition_id());
+            partition::Partition *src_partition = interaction.src();
+            partition::Partition *dst_partition = interaction.dst();
+            partition::Interaction *interaction_edges = interaction.edges();
+            spdlog::trace("Processing interaction: src: {}, dst: {}", src_partition->partition_id(), dst_partition->partition_id());
+
+            graph::VertexPartition* src = src_partition->mutable_vertex_partition();
+            graph::VertexPartition* dst = dst_partition->mutable_vertex_partition();
+            graph::InteractionEdges* edges = interaction_edges->mutable_interaction_edges();
             processInteraction(src, dst, edges);
             buffer_->MarkInteraction(interaction);
         }
 
         // Apply Phase
-        vertex_partitions_ = buffer_->GetPartitions();
+        buffer_->GetVertexPartitions(vertex_partitions_);
         int num_local_partitions = vertex_partitions_.size();
         for(int i = 0; i < num_local_partitions; i++) {
             applyPhase(*vertex_partitions_[i]);
@@ -56,7 +151,7 @@ void Graph<R, A>::startProcessing(const int &num_iters) {
 template <typename R, typename A>
 void Graph<R, A>::collectResults() {
     vertices_.clear();
-    vertex_partitions_ = buffer_->GetPartitions();
+    buffer_->GetVertexPartitions(vertex_partitions_);
     int num_local_partitions = vertex_partitions_.size();
     for (int i = 0; i < num_local_partitions; i++) {
         for (int j = 0; j < vertex_partitions_[i]->vertices().size(); j++) {

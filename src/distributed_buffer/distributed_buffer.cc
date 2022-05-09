@@ -29,16 +29,16 @@ void DistributedBuffer::MarkInteraction(WorkUnit interaction) {
 
 // Write to a file or store to some different buffer to be retrieved when sending to another part of the buffer.
 void DistributedBuffer::ReleasePartition(int partition_id) {
-  graph::VertexPartition* partition;
+  partition::Partition* partition;
   {
     std::unique_lock<std::mutex> buffer_lock(buffer_mutex_);
     // Remove a partition with a particular partition id from the buffer and put it in hashmap (TODO: Save to file)
-    auto comp_partition = [&](graph::VertexPartition* p) {
+    auto comp_partition = [&](partition::Partition* p) {
       return p != nullptr && p->partition_id() == partition_id;
     };
-    auto partition_iter = std::find_if(vertex_partitions_.begin(), vertex_partitions_.end(), comp_partition);
-    if (partition_iter == vertex_partitions_.end()) {
-      spdlog::debug("Partition {} not found to release.", partition_id);
+    auto partition_iter = std::find_if(partitions_.begin(), partitions_.end(), comp_partition);
+    if (partition_iter == partitions_.end()) {
+      spdlog::debug("Partition {} not found. Exiting..", partition_id);
       return;
     }
     partition = *partition_iter;
@@ -57,8 +57,8 @@ void DistributedBuffer::ReleasePartition(int partition_id) {
 
 void DistributedBuffer::CheckAndReleaseAllPartitions() {
   for(int i = 0; i < capacity_; i++) {
-    if(vertex_partitions_[i] == nullptr) continue;
-    CheckAndReleaseOutgoingPartition(vertex_partitions_[i]->partition_id());
+    if(partitions_[i] == nullptr) continue;
+    CheckAndReleaseOutgoingPartition(partitions_[i]->partition_id());
   }
 }
 
@@ -121,8 +121,8 @@ void DistributedBuffer::InitEpoch() {
   epoch_complete_ = false;
   interactions_matrix_ = std::vector<std::vector<bool>>(num_partitions_, std::vector<bool>(num_partitions_, false));
   partitions_fetched_ = 0;
-  pair<int, int> current_partitions = {vertex_partitions_[0]->partition_id()/ (capacity_/2),
-                                   vertex_partitions_[capacity_/2]->partition_id()/ (capacity_/2)};
+  pair<int, int> current_partitions = {partitions_[0]->partition_id()/ (capacity_/2),
+                                   partitions_[capacity_/2]->partition_id()/ (capacity_/2)};
 
   // Assert that the ones not re-initialized have the expected values
   assert(buffer_size_ == capacity_);
@@ -143,8 +143,8 @@ void DistributedBuffer::InitEpoch() {
     // Rearrange the buffer to reflect expected machine state if flipped
     if(current_machine_state[self_rank_] != current_partitions) {
       RearrangeBuffer();
-      current_partitions = make_pair(vertex_partitions_[0]->partition_id()/ (capacity_/2),
-                                   vertex_partitions_[capacity_/2]->partition_id()/ (capacity_/2));
+      current_partitions = make_pair(partitions_[0]->partition_id()/ (capacity_/2),
+                                   partitions_[capacity_/2]->partition_id()/ (capacity_/2));
     }
     assert(current_machine_state[self_rank_] == current_partitions);
     // Get the next matchings in a cyclic way starting from the current matching
@@ -159,7 +159,7 @@ void DistributedBuffer::InitEpoch() {
   ProduceInteractions();
 }
 
-DistributedBuffer::DistributedBuffer(DistributedBufferConfig config, std::string& graph_filepath, bool weighted_edges) {  
+DistributedBuffer::DistributedBuffer(DistributedBufferConfig config, PartitionType partition_type) {  
   self_rank_ = config.self_rank;
   num_partitions_ = config.num_partitions;
   capacity_ = config.capacity;
@@ -168,23 +168,51 @@ DistributedBuffer::DistributedBuffer(DistributedBufferConfig config, std::string
   server_addresses_ = config.server_addresses;
   rounds_per_iteration_ = 2 * num_workers_ - 1;
   buffer_size_ = 0;
+  partition_type_ = partition_type;
+  started_ = false;
   matchings_.clear();
   machine_state_.clear();
   done_partitions_.clear();
+}
 
-  spdlog::debug("Loading graph from file: {}", graph_filepath);
-  LoadInteractionEdges(graph_filepath, weighted_edges);
-  spdlog::debug("Initialize partitions.");
-  LoadInitialPartitions();
+void DistributedBuffer::Load(init_interactions_func_t init_interactions_func, init_partition_func_t init_partition_func) {
+  LoadInteractions(init_interactions_func);
+  LoadInitialPartitions(init_partition_func);
+}
+
+void DistributedBuffer::Start() {
+  spdlog::info("Starting distributed buffer");
+  //check if threads are already running
   
-  // Start the gRPC server.
+  if(started_) {
+    spdlog::trace("Distributed buffer already started");
+    return;
+  }
+  
   threads_.push_back(std::thread([&](){
     StartServer();
   }));
   threads_.push_back(std::thread([&](){
     PopulatePartitions();
   }));
-
+  
   SetupClientStubs();
   PingAll();
+
+  started_ = true;
 }
+
+void DistributedBuffer::GetVertexPartitions(std::vector<graph::VertexPartition*> &vertex_partitions) {
+  vertex_partitions.clear();
+  for(partition::Partition *partition : partitions_) {
+      vertex_partitions.emplace_back(partition->mutable_vertex_partition());
+  }
+}
+
+void DistributedBuffer::GetMatrixPartitions(std::vector<matmul::MatrixPartition*> &matrix_partitions) {
+  matrix_partitions.clear();
+  for(partition::Partition *partition : partitions_) {
+      matrix_partitions.emplace_back(partition->mutable_matrix_partition());
+  }
+}
+

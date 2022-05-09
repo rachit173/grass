@@ -1,5 +1,4 @@
 # Kill previous instances of run_app
-ps -aux | grep run_app | awk '{print $2}' | xargs kill -9
 
 NUM_WORKERS=$1
 ITERS=$2
@@ -9,12 +8,22 @@ fi
 if [ -z $ITERS ]; then
   ITERS=10
 fi
+NUM_ROWS=$3
+if [ -z $NUM_ROWS ]; then
+  NUM_ROWS=160
+fi
+NUM_COLS=$4
+if [ -z $NUM_COLS ]; then
+  NUM_COLS=240
+fi
+
+
 # Change to base directory
 BASE_DIR=/mnt/Work/grass
 SOCKET_OFFSET=16
 echo "$BASE_DIR"
 cd $BASE_DIR
-bazel build --copt=-O3 //src:run_app
+bazel build --copt=-O3 //src/matmul:run_app
 
 KillAll() {
   pids=$(ps -ef | grep run_app | grep -v grep | awk '{print $2}')
@@ -22,6 +31,18 @@ KillAll() {
     echo "Killing previous instances of run_app"
     kill -9 $pids
   fi
+}
+
+INPUT_FILE=matrix_${NUM_ROWS}_${NUM_COLS}_input.txt
+
+GenerateMatrix() {
+  echo "Generating matrix of size ${NUM_ROWS}x${NUM_COLS}"
+  python3 $BASE_DIR/tools/generate_matrices.py $NUM_ROWS $NUM_COLS
+}
+
+VerifyMatrix() {
+  echo "Verifying matrix of size ${NUM_ROWS}x${NUM_COLS}" 
+  python3 $BASE_DIR/tools/verify_matrices.py "matrix_${NUM_ROWS}_${NUM_COLS}"
 }
 
 GenerateServerAddresses() {
@@ -35,7 +56,7 @@ GenerateServerAddresses() {
 
 RunCore () {
   rank=$1
-  ./bazel-bin/src/run_app $rank /mnt/Work/grass/tmp_exec.conf &
+  ./bazel-bin/src/matmul/run_app $rank /mnt/Work/grass/tmp_exec.conf &
   pid=$(echo $!)
   # taskset -p $pid -c $rank,$(($rank+$SOCKET_OFFSET)) 
   echo "Process $rank: $pid"
@@ -53,11 +74,11 @@ buffer.num_partitions=$((num_workers*4))
 buffer.num_workers=$num_workers
 buffer.server_addresses=$addr
 
-app.name=pagerank
-app.input_dir=/mnt/Work/grass/resources/graphs
+app.name=matmul
+app.input_dir=/mnt/Work/grass/resources/matmul
 app.output_dir=/mnt/Work/grass/resources
 app.iterations=$iters
-app.graph_file=web-BerkStan.txt
+app.graph_file=$INPUT_FILE
 app.log_level=info
 EOF
 for (( c=0; c<$num_workers; c++ ))
@@ -68,4 +89,6 @@ wait
 }
 
 KillAll
+GenerateMatrix
 RunK $NUM_WORKERS $ITERS
+VerifyMatrix

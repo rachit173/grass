@@ -2,7 +2,8 @@
 
 using graph::Double;
 
-PageRank::PageRank(DistributedBuffer* buffer) : BaseApp<double, double>(buffer) {
+PageRank::PageRank(DistributedBuffer* buffer, std::string input_file, bool weighted_edges)
+ : BaseApp<double, double>(buffer, input_file, weighted_edges) {
     this->Graph::set_init_func(&PageRank::init);
     this->Graph::set_gather_func(&PageRank::gather);
     this->Graph::set_apply_func(&PageRank::apply);

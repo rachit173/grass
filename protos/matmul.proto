@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package matmul;
 
-
-
 message MatrixState {
   repeated double values = 1;
   message Result {
@@ -21,9 +19,9 @@ message Matrix {
 
 message MatrixPartition {
   Matrix matrix = 1;
-  uint64 partition_id = 2;
 }
 
-message MatrixInteraction {
-  Matrix sub_matrix = 1;
+// This may be unnecessary, putting it here for completeness.
+message InteractionMatrices {
+  repeated Matrix matrices = 1;
 }

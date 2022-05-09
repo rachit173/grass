@@ -2,7 +2,8 @@
 
 int64_t ShortestPath::src_vtx_id_ = 0;
 
-ShortestPath::ShortestPath(DistributedBuffer* buffer, int64_t src_vtx_id) : BaseApp<double, double> (buffer) {
+ShortestPath::ShortestPath(DistributedBuffer* buffer, std::string input_file, bool weighted_edges, int64_t src_vtx_id)
+ : BaseApp<double, double>(buffer, input_file, weighted_edges) {
     this->Graph::set_init_func(&ShortestPath::init);
     this->Graph::set_gather_func(&ShortestPath::gather);
     this->Graph::set_apply_func(&ShortestPath::apply);

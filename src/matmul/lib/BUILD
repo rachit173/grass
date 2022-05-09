@@ -7,7 +7,12 @@ cc_library(
     hdrs = ["Matrix.h", "MatMul.h"],
     linkstatic = 1,
     deps = [
-        "//protos:matmul_cc_grpc",
+        "//protos:partition_cc_grpc",
         "@com_github_grpc_grpc//:grpc++",
-        "@spdlog"]
+        "@spdlog",
+        "//src/distributed_buffer:distributed_buffer"
+    ],
+    copts = [
+      "-std=c++17"
+    ]
 )
