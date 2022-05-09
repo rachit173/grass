@@ -44,7 +44,7 @@ void DistributedBuffer::LoadInteractionEdges(std::string& graph_file, bool weigh
     }
     ss << "\n";
   }
-  spdlog::info("Edge partition sizes: \n{}", ss.str());
+  spdlog::trace("Edge partition sizes: \n{}", ss.str());
 
   graph_file_stream.close();
 }

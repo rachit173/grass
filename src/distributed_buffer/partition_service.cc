@@ -86,9 +86,9 @@ void DistributedBuffer::PingAll() {
     graph::PingRequest request;
     grpc::Status status = client_stubs_[r]->Ping(&context, request, &response);
     if (!status.ok()) {
-      spdlog::error("[gRPC] Ping to server {} failed: {}", server_addresses_[r], status.error_message());
+      spdlog::trace("[gRPC] Ping to server {} failed: {}", server_addresses_[r], status.error_message());
     } else {
-      spdlog::info("[gRPC] Ping to server {} succeeded", server_addresses_[r]);
+      spdlog::trace("[gRPC] Ping to server {} succeeded", server_addresses_[r]);
     }
   }
 }
