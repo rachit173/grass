@@ -54,10 +54,38 @@ GenerateServerAddresses() {
   done
 }
 
+RunFlameGraph() {
+  appPid=$1
+  rank=$2
+
+  FLAME_DIR=/mnt/Work/FlameGraph
+  PERF_LOG_DIR=$BASE_DIR/perf_log
+  mkdir -p $PERF_LOG_DIR
+
+  echo "Recording..."
+  sudo perf record -F 500 -p $appPid -g -- sleep 120
+
+  sudo chmod 666 perf.data
+
+  echo "Stack traces"
+  perf script | $FLAME_DIR/stackcollapse-perf.pl > $PERF_LOG_DIR/out.perf-folded
+
+  echo "Plot..."
+  $FLAME_DIR/flamegraph.pl $PERF_LOG_DIR/out.perf-folded > $PERF_LOG_DIR/perf_$rank.svg
+
+  echo "Cleanup"
+  sudo rm perf.data
+  sudo rm $PERF_LOG_DIR/out.perf-folded
+}
+
 RunCore () {
   rank=$1
   ./bazel-bin/src/matmul/run_app $rank /mnt/Work/grass/tmp_exec.conf &
   pid=$(echo $!)
+
+  if [ $rank -eq 0 ]; then
+    RunFlameGraph $pid $rank &
+  fi
   # taskset -p $pid -c $rank,$(($rank+$SOCKET_OFFSET)) 
   echo "Process $rank: $pid"
 }
