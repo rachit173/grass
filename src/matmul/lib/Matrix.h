@@ -65,27 +65,34 @@ public:
         this->matrix_->mutable_state()->set_values(index, value);
     }
 
-    std::string to_string() const {
+    std::string to_string(bool headers = true) const {
         int64_t num_rows = get_num_rows();
         int64_t num_cols = get_num_cols();
         int max_width = calculate_width() + 2;
         
         std::stringstream ss;
-        ss << "Size: " << num_rows << " x " << num_cols << std::endl;
-        ss << std::setw(max_width + 1) << "";
+        ss << num_rows << " " << num_cols << std::endl;
+        if (headers) {
+            ss << std::setw(max_width + 1) << "";
 
-        for (int64_t j = 0; j < num_cols; j++) {
-            ss << std::setw(max_width - 1) << j << ": ";
+            for (int64_t j = 0; j < num_cols; j++) {
+                ss << std::setw(max_width - 1) << j << ": ";
+            }
+            
+            ss << std::endl;
         }
-        
-        ss << std::endl;
 
         for (int64_t i = 0; i < num_rows; i++) {
             for (int64_t j = 0; j < num_cols; j++) {
-                if (j == 0) {
-                    ss << std::setw(max_width - 1) << i << ": ";
+                long value = get_value(i, j);
+                if (headers) {
+                    if (j == 0) {
+                        ss << std::setw(max_width - 1) << i << ": ";
+                    }
+                    ss << std::setw(max_width) << value << " ";
+                } else {
+                    ss << value << " ";
                 }
-                ss << std::setw(max_width) << get_value(i, j) << " ";
             }
             ss << std::endl;
         }

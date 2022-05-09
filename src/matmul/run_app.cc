@@ -70,9 +70,6 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    Matrix_t input_matrix = attention_mm->GetInputMatrix();
-    outfile << input_matrix.to_string();    
-    outfile << std::endl;
     
     // Collect results from other ranks
     if (buffer_config.self_rank == 0) {
@@ -83,9 +80,11 @@ int main(int argc, char* argv[]) {
         spdlog::info("Collect result time: {} ms", collect_result_duration.count());
         
         Matrix_t result_matrix = attention_mm->GetResultMatrix();
-        outfile << result_matrix.to_string();
+        outfile << result_matrix.to_string(false);
     } else {
         spdlog::info("Waiting for results from rank 0");
-        sleep(5);
+        sleep(buffer_config.num_workers*10);
     }
+
+    outfile.close();
 }

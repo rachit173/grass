@@ -8,6 +8,16 @@ fi
 if [ -z $ITERS ]; then
   ITERS=10
 fi
+NUM_ROWS=$3
+if [ -z $NUM_ROWS ]; then
+  NUM_ROWS=160
+fi
+NUM_COLS=$4
+if [ -z $NUM_COLS ]; then
+  NUM_COLS=240
+fi
+
+
 # Change to base directory
 BASE_DIR=/mnt/Work/grass
 SOCKET_OFFSET=16
@@ -23,13 +33,16 @@ KillAll() {
   fi
 }
 
-NUM_ROWS=160
-NUM_COLS=240
 INPUT_FILE=matrix_${NUM_ROWS}_${NUM_COLS}_input.txt
 
 GenerateMatrix() {
   echo "Generating matrix of size ${NUM_ROWS}x${NUM_COLS}"
   python3 $BASE_DIR/tools/generate_matrices.py $NUM_ROWS $NUM_COLS
+}
+
+VerifyMatrix() {
+  echo "Verifying matrix of size ${NUM_ROWS}x${NUM_COLS}" 
+  python3 $BASE_DIR/tools/verify_matrices.py "matrix_${NUM_ROWS}_${NUM_COLS}"
 }
 
 GenerateServerAddresses() {
@@ -78,3 +91,4 @@ wait
 KillAll
 GenerateMatrix
 RunK $NUM_WORKERS $ITERS
+VerifyMatrix

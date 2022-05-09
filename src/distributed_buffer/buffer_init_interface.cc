@@ -14,7 +14,7 @@ partition::Partition* DistributedBuffer::InitPartition(init_partition_func_t ini
   return partition;
 }
 
-void DistributedBuffer::InitSuperPartition(init_partition_func_t init_partition_func, std::vector<partition::Partition*>& super_partition, int super_partition_id) {
+void DistributedBuffer::InitSuperPartition(init_partition_func_t init_partition_func, std::vector<partition::Partition*>& partitions, int super_partition_id) {
   int B = capacity_/2;
   for(int i = 0; i < B; i++) {
     int partition_id = super_partition_id * B + i;
@@ -28,7 +28,7 @@ void DistributedBuffer::InitSuperPartition(init_partition_func_t init_partition_
       throw std::invalid_argument(fmt::format("DistributedBuffer::InitSuperPartition: partition_end: {} is less than partition_start: {}", partition_end, partition_start));
     }
     
-    super_partition[i] = InitPartition(init_partition_func, partition_id, partition_start, partition_end); // [partition_start, partition_end)
+    partitions[i] = InitPartition(init_partition_func, partition_id, partition_start, partition_end); // [partition_start, partition_end)
     buffer_size_++; // Track buffer size
   }
 }

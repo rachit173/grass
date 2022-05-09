@@ -54,8 +54,8 @@ buffer.num_workers=$num_workers
 buffer.server_addresses=$addr
 
 app.name=pagerank
-app.base_dir=/mnt/Work/grass/resources/graphs
-app.out_dir=/mnt/Work/grass/resources
+app.input_dir=/mnt/Work/grass/resources/graphs
+app.output_dir=/mnt/Work/grass/resources
 app.iterations=$iters
 app.graph_file=web-BerkStan.txt
 app.log_level=info
