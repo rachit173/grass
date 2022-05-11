@@ -17,12 +17,18 @@ void DistributedBuffer::PopulatePartitions() {
     request.set_incoming_round(fill_round_);
     partition::PartitionResponse response;
 
+    Timer timer;
+    timer.start();
     grpc::Status status = client_stubs_[target_machine]->GetPartition(&context, request, &response);
+    timer.stop();
+    
     if (!status.ok()) {
       spdlog::trace("[gRPC] Failed to get partition {} from machine {}. Error: {}", target_super_partition, target_machine, status.error_message());
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
       continue; // Try again if failed, don't return
     }
+    
+    metric_get_partition_rpc_.add(timer.get_time_in_nanoseconds());
 
     // Add partition to buffer
     partition::Partition* partition = new partition::Partition();

@@ -4,6 +4,8 @@ using namespace std;
 
 // Pick work unit from queue
 std::optional<WorkUnit> DistributedBuffer::GetWorkUnit() {
+  Timer timer;
+  timer.start();
   std::unique_lock<std::mutex> lock(mutex_);
   if(interaction_queue_.empty() && !IsEpochComplete()) {
     spdlog::debug("Waiting for work unit");
@@ -15,6 +17,8 @@ std::optional<WorkUnit> DistributedBuffer::GetWorkUnit() {
   auto interaction = interaction_queue_.front();
   spdlog::trace("Round: {}, Work Unit: (src: {}, dst: {})", outgoing_round_, interaction.src()->partition_id(), interaction.dst()->partition_id());
   interaction_queue_.pop();
+  timer.stop();
+  metric_get_work_unit_.add(timer.get_time_in_nanoseconds());
   return interaction;
 }
 
@@ -176,8 +180,12 @@ DistributedBuffer::DistributedBuffer(DistributedBufferConfig config, PartitionTy
 }
 
 void DistributedBuffer::Load(init_interactions_func_t init_interactions_func, init_partition_func_t init_partition_func) {
+  Timer timer;
+  timer.start();
   LoadInteractions(init_interactions_func);
   LoadInitialPartitions(init_partition_func);
+  timer.stop();
+  metric_load_data_.add(timer.get_time_in_nanoseconds());
 }
 
 void DistributedBuffer::Start() {
@@ -215,4 +223,3 @@ void DistributedBuffer::GetMatrixPartitions(std::vector<matmul::MatrixPartition*
       matrix_partitions.emplace_back(partition->mutable_matrix_partition());
   }
 }
-

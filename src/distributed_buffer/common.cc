@@ -76,3 +76,17 @@ void DistributedBuffer::RearrangeBuffer() {
     std::swap(partitions_[i], partitions_[half_cap + i]);
   }
 }
+
+void DistributedBuffer::WriteMetrics() {
+  std::ofstream metrics_file;
+  std::string metrics_file_name = "buffer_metrics_" + std::to_string(self_rank_) + ".csv";
+  metrics_file.open(metrics_file_name);
+
+  metrics_file << "Event," << metric_load_data_.get_header() << std::endl;
+  metrics_file << "Load data," << metric_load_data_.get_metrics_in_ms() << std::endl;
+  metrics_file << "Get Partitions (RPC)," << metric_get_partition_rpc_.get_metrics_in_ms() << std::endl;
+  metrics_file << "Get Work Unit," << metric_get_work_unit_.get_metrics_in_ms() << std::endl;
+
+  spdlog::info("Metrics written to {}", metrics_file_name);
+  metrics_file.close();
+}

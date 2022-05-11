@@ -7,3 +7,4 @@ graphbench/*
 tmp_exec.conf
 third_party/*
 !third_party/*.BUILD
+deploy/

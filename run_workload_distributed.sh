@@ -1,6 +1,3 @@
-# Kill previous instances of run_app
-ps -aux | grep run_app | awk '{print $2}' | xargs kill -9
-
 NUM_WORKERS=$1
 ITERS=$2
 CAPACITY=$3
@@ -13,25 +10,43 @@ if [ -z $ITERS ]; then
 fi
 # Change to base directory
 BASE_DIR=/mnt/Work/grass
+DEPLOY_DIR=$BASE_DIR/deploy
+BINARY_DIR=$BASE_DIR/bazel-bin
+GRAPH_DATA_DIR=$BASE_DIR/resources/graphs/
+TMP_CONFIG_FILE=$BASE_DIR/tmp_exec.conf
 SOCKET_OFFSET=16
+
 echo "$BASE_DIR"
-cd $BASE_DIR
+pushd $BASE_DIR
 bazel build --copt=-O3 //src:run_app
 
-KillAll() {
-  pids=$(ps -ef | grep run_app | grep -v grep | awk '{print $2}')
-  if [ -n "$pids" ]; then
-    echo "Killing previous instances of run_app"
-    kill -9 $pids
-  fi
+if [ $? -ne 0 ]; then
+  echo "Build failed. Exiting..."
+  exit 1
+fi
+
+StartWorkers() {
+  rank=0
+  for i in "${addrs_arr[@]}"; do
+    echo "Starting worker $rank on $i"
+    ssh $i "bash $DEPLOY_DIR/start_worker.sh $rank $DEPLOY_DIR" &
+    rank=$((rank+1))
+  done
 }
 
 GenerateServerAddresses() {
-  local num_workers=$1
-  addr=""
+  local num_machines=$1
+  addrs=""
+  addrs_with_ports=""
+  IP_BASE="10.10.1."
   SOCKET_BASE=40000
-  for i in $(seq 1 $num_workers); do
-    addr+="localhost:$((SOCKET_BASE + i)),"
+
+  for i in $(seq 1 $num_machines); do
+    MACHINE_IP=$IP_BASE$i
+    # for j in $(seq 1 $NUM_WORKERS_PER_MACHINE); do
+    addrs+="$MACHINE_IP,"
+    addrs_with_ports+="$MACHINE_IP:$((SOCKET_BASE + i)),"
+    # done
   done
 }
 
@@ -59,16 +74,20 @@ RunFlameGraph() {
   sudo rm $PERF_LOG_DIR/out.perf-folded
 }
 
-RunCore () {
-  rank=$1
-  ./bazel-bin/src/run_app $rank /mnt/Work/grass/tmp_exec.conf &
-  pid=$(echo $!)
-
-  if [ $rank -eq 0 ]; then
-    RunFlameGraph $pid $rank &
-  fi
-  # taskset -p $pid -c $rank,$(($rank+$SOCKET_OFFSET)) 
-  echo "Process $rank: $pid"
+DeployExecutable() {
+  local addrs=$1
+  
+  IFS=',' read -ra addrs_arr <<< "$addrs"
+  echo "Deploying to ${addrs_arr[@]}"
+  for i in "${addrs_arr[@]}"; do
+    echo "Deploying to $i"
+    ssh $i "rm -rf $DEPLOY_DIR"
+    ssh $i "mkdir -p $DEPLOY_DIR/bin"
+    rsync -r $BINARY_DIR/ $i:$DEPLOY_DIR/bin > /dev/null
+    rsync $TMP_CONFIG_FILE $i:$DEPLOY_DIR/
+    rsync $BASE_DIR/*.sh $i:$DEPLOY_DIR
+    rsync -r $GRAPH_DATA_DIR $i:$GRAPH_DATA_DIR
+  done
 }
 
 RunK() {
@@ -76,30 +95,28 @@ local num_workers=$1
 local iters=$2
 local capacity=$3
 local graph_data=$4
-local rank=$5
-# GenerateServerAddresses $num_workers
-local addrs="10.10.1.3:40000,10.10.1.1:40000,10.10.1.4:40000,10.10.1.2:40000"
+GenerateServerAddresses $num_workers
 echo "Runnning single machine, $num_workers cores"
-rm /mnt/Work/grass/tmp_exec.conf
-cat >> /mnt/Work/grass/tmp_exec.conf << EOF
+rm $TMP_CONFIG_FILE
+cat >> $TMP_CONFIG_FILE << EOF
 buffer.capacity=$capacity
 buffer.num_partitions=$((num_workers*4))
 buffer.num_workers=$num_workers
-buffer.server_addresses=$addrs
+buffer.server_addresses=$addrs_with_ports
 
 app.name=pagerank
-app.input_dir=/mnt/Work/grass/resources/graphs
-app.output_dir=/mnt/Work/grass/resources
+app.input_dir=$BASE_DIR/resources/graphs
+app.output_dir=$BASE_DIR/resources
 app.iterations=$iters
 app.graph_file=$graph_data
 app.log_level=info
 EOF
-# for (( c=0; c<$num_workers; c++ ))
-# do
-RunCore $rank
-# done
+
+DeployExecutable $addrs
+StartWorkers
 wait
 }
 
-KillAll
-RunK $NUM_WORKERS $ITERS $CAPACITY $GRAPH_DATA $RANK
+# KillAll
+RunK $NUM_WORKERS $ITERS $CAPACITY $GRAPH_DATA
+popd

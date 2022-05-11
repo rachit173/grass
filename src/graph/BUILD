@@ -10,6 +10,7 @@ cc_library(
       "@com_github_grpc_grpc//:grpc++",
       "@spdlog",
       "//src/distributed_buffer:distributed_buffer",
+      "//src/utils:metrics"
     ],
     copts = [
       "-std=c++17"

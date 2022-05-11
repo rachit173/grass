@@ -19,6 +19,8 @@
 #include <functional>
 
 #include "matching_generator.h"
+#include "src/utils/metrics.h"
+#include "src/utils/timer.h"
 
 typedef partition::Partition::PartitionTypeCase PartitionType;
 typedef std::function<void ()> init_interactions_func_t;
@@ -78,6 +80,7 @@ public:
   uint64_t GetPartitionHash(int partition_id) { return hasher_(partition_id) % num_partitions_; }
   std::vector<partition::Partition*> &GetPartitions() { return partitions_; }
   std::vector<partition::Partition*> CollectPartitions();
+  void WriteMetrics();
   
 private:
   void LoadInteractions(init_interactions_func_t init_interactions_func);
@@ -145,5 +148,10 @@ private:
   std::condition_variable cv_epoch_completion_;
   std::mutex mutex_epoch_completion_;
   std::mutex buffer_mutex_;
+
+  // Metrices
+  Metrics metric_get_partition_rpc_;
+  Metrics metric_get_work_unit_;
+  Metrics metric_load_data_;
 };
 #endif // DISTRIBUTED_BUFFER_H
