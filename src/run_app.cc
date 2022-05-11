@@ -103,4 +103,9 @@ int main(int argc, char* argv[]) {
     auto write_end = std::chrono::high_resolution_clock::now();
     auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start);
     spdlog::info("Write time: {} ms", write_duration.count());
+
+    spdlog::info("Writing metrics");
+    buffer->WriteMetrics();
+    degree->WriteMetrics("degree");
+    pagerank->WriteMetrics("pagerank");
 }

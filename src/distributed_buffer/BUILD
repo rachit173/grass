@@ -17,6 +17,7 @@ cc_library(
   ],
   deps = [
     "//protos:partition_cc_grpc",
+    "//src/utils:metrics",
     "@com_github_grpc_grpc//:grpc++",
     "@com_google_absl//absl/strings",
     "@com_github_grpc_grpc//:grpc++_reflection",

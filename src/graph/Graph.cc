@@ -168,6 +168,8 @@ std::vector< Vertex<R, A> >& Graph<R, A>::get_vertices() {
 
 template <typename R, typename A>
 void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, graph::VertexPartition *dst_partition, const graph::InteractionEdges *directed_edges) {
+    Timer timer;
+    timer.start();
     int64_t num_interaction_edges = directed_edges->edges().size();
     // std::vector<Vertex<R,A>> src_vertices, dst_vertices;
     std::unordered_map<int64_t, Vertex<R, A>> src_vertices, dst_vertices;
@@ -181,7 +183,10 @@ void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, grap
         graph::Vertex* vertex = dst_partition->mutable_vertices(i);
         dst_vertices[vertex->id()] = Vertex<R,A>(vertex);
     }
+    timer.stop();
+    metrics_wrapper_.add(timer.get_time_in_nanoseconds());
 
+    timer.start();
     Edge edge_obj;
     for(int64_t i = 0; i < num_interaction_edges; i++) {
         const graph::Edge *edge = &directed_edges->edges(i);
@@ -194,6 +199,9 @@ void Graph<R, A>::processInteraction(graph::VertexPartition *src_partition, grap
         edge_obj.set_edge(edge);
         gather_func_(src_vertices[src_vertex_id], dst_vertices[dst_vertex_id], edge_obj);
     }
+    timer.stop();
+    metrics_gather_.add(timer.get_time_in_nanoseconds());
+    
 }
 
 template <typename R, typename A>
@@ -203,6 +211,20 @@ void Graph<R, A>::applyPhase(graph::VertexPartition& partition) {
         Vertex<R, A> v(vertex);
         apply_func_(v);
     }
+}
+
+template <typename R, typename A>
+void Graph<R, A>::WriteMetrics(std::string prefix) {
+  std::ofstream metrics_file;
+  std::string metrics_file_name = prefix + "_graph_metrics.csv";
+  metrics_file.open(metrics_file_name);
+
+  metrics_file << "Event," << metrics_wrapper_.get_header() << std::endl;
+  metrics_file << "Vertices Wrapping," << metrics_wrapper_.get_metrics_in_ms() << std::endl;
+  metrics_file << "Gather," << metrics_gather_.get_metrics_in_ms() << std::endl;
+
+  spdlog::info("Metrics written to {}", metrics_file_name);
+  metrics_file.close();
 }
 
 template <typename R, typename A>

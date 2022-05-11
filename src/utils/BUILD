@@ -20,3 +20,8 @@ cc_library(
   srcs = ["perf_utils.h"]
 )
 
+cc_library(
+  name = "metrics",
+  srcs = ["timer.h", "metrics.h"]
+)
+

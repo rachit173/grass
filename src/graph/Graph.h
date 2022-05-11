@@ -27,6 +27,7 @@ public:
     void startProcessing(const int &num_iters);
     void collectResults();
     std::vector<Vertex<R,A>>& get_vertices();
+    void WriteMetrics(std::string prefix);
 
 protected:
     void set_init_func(init_func_t init_func);
@@ -48,6 +49,10 @@ private:
     void processInteraction(graph::VertexPartition *src_partition, graph::VertexPartition *dst_partition, const graph::InteractionEdges *directed_edges);
     void applyPhase(graph::VertexPartition& partition);
     void InitPartition(partition::Partition *partition, int partition_start, int partition_end);
+
+    // Metrics
+    Metrics metrics_wrapper_;
+    Metrics metrics_gather_;
 };
 
 #endif // GRAPH_H
