@@ -47,8 +47,12 @@ void DistributedBuffer::LoadInitialPartitions(init_partition_func_t init_partiti
     partition_vertices_[partition_id].push_back(i);
   }
 
-  int left_super_partition = (2*self_rank_); // machine_state_[0][self_rank_].first;
-  int right_super_partition = (2*self_rank_+1); // machine_state_[0][self_rank_].second;
+  vvii matchings;
+  GenerateMatchings(0, 2 * num_workers_, matchings);
+  pair<int, int> initial_partition_state = matchings[0][self_rank_];
+  matchings.clear();
+  int left_super_partition = initial_partition_state.first; // machine_state_[0][self_rank_].first;
+  int right_super_partition = initial_partition_state.second; // machine_state_[0][self_rank_].second;
   int B = capacity_/2;
   partitions_first_half_ = std::vector<partition::Partition*>(capacity_/2, nullptr);
   partitions_second_half_ = std::vector<partition::Partition*>(capacity_/2, nullptr);

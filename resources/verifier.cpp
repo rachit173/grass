@@ -220,7 +220,12 @@ int main(int argc, char* argv[])
     std::string input_filepath = base_dir + "/graphs/" + test_file;
     std::string output_filepath = base_dir + "/" + application + "/expected_results/" + test_file;
 
+    auto input_start = std::chrono::high_resolution_clock::now();
     Graph graph(input_filepath, false);
+    auto input_end = std::chrono::high_resolution_clock::now();
+    std::cout << "Input loading time: " << std::chrono::duration_cast<std::chrono::milliseconds>(input_end - input_start).count() << std::endl;
+
+    auto exec_start = std::chrono::high_resolution_clock::now();
 
     if(application == "shortest-path"){
         int num_iterations = 10;
@@ -245,6 +250,9 @@ int main(int argc, char* argv[])
         std::cerr << "Invalid application: " << application << std::endl;
         exit(1);
     }
+
+    auto exec_end = std::chrono::high_resolution_clock::now();
+    std::cout << "Execution time: " << std::chrono::duration_cast<std::chrono::milliseconds>(exec_end - exec_start).count() << std::endl;
 
     return 0;
 }
