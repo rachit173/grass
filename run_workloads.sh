@@ -81,7 +81,7 @@ echo "Runnning single machine, $num_workers cores"
 rm /mnt/Work/grass/tmp_exec.conf
 cat >> /mnt/Work/grass/tmp_exec.conf << EOF
 buffer.capacity=$capacity
-buffer.num_partitions=$((num_workers*4))
+buffer.num_partitions=$((num_workers*capacity))
 buffer.num_workers=$num_workers
 buffer.server_addresses=$addr
 
