@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include <spdlog/spdlog.h>
 #include <assert.h>
+#include <unistd.h>
 #include <functional>
 
 #include "matching_generator.h"

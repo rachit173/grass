@@ -18,7 +18,10 @@ void DistributedBuffer::PopulatePartitions() {
     partition::PartitionResponse response;
 
     Timer timer;
-    timer.start();
+    auto start_time = timer.start();
+    spdlog::debug("[Tracing] {{'name':'Init Request Partition {}', 'cat':'super_partition_{}', 'pid': '{}', 'tid': '{}', 'ph': 'i','ts': '{}', 'args': {{'worker': '{}'}}}}",
+      target_super_partition, target_super_partition, std::to_string(getpid()), std::to_string((long)pthread_self()%100000), start_time, self_rank_);
+
     grpc::Status status = client_stubs_[target_machine]->GetPartition(&context, request, &response);
     timer.stop();
     
@@ -29,6 +32,10 @@ void DistributedBuffer::PopulatePartitions() {
     }
     
     metric_get_partition_rpc_.add(timer.get_time_in_nanoseconds());
+    auto duration_us = timer.get_time_in_microseconds();
+    spdlog::debug("[Tracing] {{'name':'Request Partition {}', 'cat':'partition_{}', 'pid': '{}', 'tid': '{}', 'ph': 'X','ts': '{}', 'dur': '{}', 'args': {{ 'worker': '{}'}}}}",
+     response.partition().partition_id(), response.partition().partition_id(), std::to_string(getpid()),
+     std::to_string((long)pthread_self()%100000), start_time, duration_us, self_rank_);
 
     // Add partition to buffer
     partition::Partition* partition = new partition::Partition();

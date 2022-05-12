@@ -4,20 +4,14 @@
 #include <chrono>
 #include <bits/stdc++.h>
 
-class AbstractTimer {
-public:
-    virtual void start() = 0;
-    virtual void stop() = 0;
-    virtual double get_time_in_nanoseconds() = 0;
-};
-
-class Timer: public AbstractTimer {
+class Timer {
 private:
     std::chrono::time_point<std::chrono::high_resolution_clock> begin;
     std::chrono::time_point<std::chrono::high_resolution_clock> end;
 public:
-    inline void start() {
+    inline long start() {
         begin = std::chrono::high_resolution_clock::now();
+        return std::chrono::duration_cast<std::chrono::microseconds>(begin.time_since_epoch()).count();
     }
 
     inline void stop() {
@@ -28,28 +22,12 @@ public:
         return std::chrono::high_resolution_clock::now().time_since_epoch().count();
     }
 
+    double get_time_in_microseconds() {
+        return std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    }
+
     double get_time_in_nanoseconds() {
         return std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-    }
-};
-
-class Timer2: public AbstractTimer {
-    private:
-    struct timespec begin, end;
-public:
-    inline void start() {
-        clock_gettime(CLOCK_MONOTONIC, &begin);
-    }
-
-    inline void stop() {
-        clock_gettime(CLOCK_MONOTONIC, &end);
-    }
-
-    double get_time_in_nanoseconds() {
-        double time_taken;
-        time_taken = (end.tv_sec - begin.tv_sec) * 1e9;
-        time_taken += (end.tv_nsec - begin.tv_nsec);
-        return time_taken;
     }
 };
 
