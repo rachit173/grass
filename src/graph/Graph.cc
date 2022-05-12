@@ -132,7 +132,13 @@ void Graph<R, A>::startProcessing(const int &num_iters) {
             graph::VertexPartition* src = src_partition->mutable_vertex_partition();
             graph::VertexPartition* dst = dst_partition->mutable_vertex_partition();
             graph::InteractionEdges* edges = interaction_edges->mutable_interaction_edges();
+            Timer timer;
+            auto start_time = timer.start();
             processInteraction(src, dst, edges);
+            timer.stop();
+            auto duration_us = timer.get_time_in_microseconds();
+            spdlog::debug("[Tracing] {{'name':'ProcessInteraction_{}', 'cat':'partition_{}', 'pid': '{}', 'tid': '{}', 'ph': 'X','ts': '{}', 'dur': {}}}", src_partition->partition_id(), src_partition->partition_id(), std::to_string(getpid()), std::to_string((long)pthread_self()%100000), start_time, duration_us);
+            spdlog::debug("[Tracing] {{'name':'ProcessInteraction_{}', 'cat':'partition_{}', 'pid': '{}', 'tid': '{}', 'ph': 'X','ts': '{}', 'dur': {}}}", dst_partition->partition_id(), dst_partition->partition_id(), std::to_string(getpid()), std::to_string((long)pthread_self()%100000), start_time, duration_us);
             buffer_->MarkInteraction(interaction);
         }
 

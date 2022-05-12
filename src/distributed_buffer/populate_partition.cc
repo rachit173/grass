@@ -18,7 +18,10 @@ void DistributedBuffer::PopulatePartitions() {
     partition::PartitionResponse response;
 
     Timer timer;
-    timer.start();
+    auto start_time = timer.start();
+    spdlog::debug("[Tracing] {{'name':'Init Request SuperPartition {}', 'cat':'request_super_partition_{}', 'id':'0x10{}', 'pid': '{}', 'tid': '{}', 'ph': 'i','ts': '{}', 'args': {{'worker': '{}'}}}}", target_super_partition, target_super_partition,
+        target_super_partition, std::to_string(getpid()), std::to_string((long)pthread_self()%100000), start_time, self_rank_);
+
     grpc::Status status = client_stubs_[target_machine]->GetPartition(&context, request, &response);
     timer.stop();
     
@@ -29,6 +32,9 @@ void DistributedBuffer::PopulatePartitions() {
     }
     
     metric_get_partition_rpc_.add(timer.get_time_in_nanoseconds());
+    auto duration_us = timer.get_time_in_microseconds();
+    spdlog::debug("[Tracing] {{'name':'Request SuperPartition {}', 'cat':'request_super_partition_{}', 'id':'0x10{}', 'pid': '{}', 'tid': '{}', 'ph': 'X','ts': '{}', 'dur': '{}', 'args': {{'recvd partition_id':'{}', 'worker': '{}'}}}}", target_super_partition, target_super_partition,
+        target_super_partition, std::to_string(getpid()), std::to_string((long)pthread_self()%100000), start_time, duration_us, response.partition().partition_id(), self_rank_);
 
     // Add partition to buffer
     partition::Partition* partition = new partition::Partition();

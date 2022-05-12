@@ -119,4 +119,5 @@ wait
 
 # KillAll
 RunK $NUM_WORKERS $ITERS $CAPACITY $GRAPH_DATA
+bash ./collect_tracing.sh $NUM_WORKERS $GRAPH_DATA
 popd

@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <functional>
+#include <unistd.h>
 #include <spdlog/spdlog.h>
 #include <grpcpp/grpcpp.h>
 #include "protos/partition.grpc.pb.h"
