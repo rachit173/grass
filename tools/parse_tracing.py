@@ -15,7 +15,7 @@ def parse_log(log_file):
   f = open(log_file, 'r')
   lines = f.readlines()
   for line in lines:
-    if "[Tracing]" in line and "name" in line:
+    if "[Tracing]" in line:
       cleaned_line = line.split('[Tracing]')[1]
       cleaned_line = cleaned_line.strip().replace("'", '"')
       try :
