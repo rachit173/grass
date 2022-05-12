@@ -27,7 +27,7 @@ pushd third_party
 
 # OpenBLAS
 sudo apt update
-sudo apt install libopenblas-dev
+sudo apt install -y libopenblas-dev
 # sudo update-alternatives --config libblas.so.3
 
 # lapackpp  
