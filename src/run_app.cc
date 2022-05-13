@@ -58,54 +58,49 @@ int main(int argc, char* argv[]) {
 
     auto p1 = std::chrono::high_resolution_clock::now();
     DistributedBuffer* buffer = new DistributedBuffer(buffer_config, partition_type);
-    auto p2 = std::chrono::high_resolution_clock::now();
-    Degree* degree = new Degree(buffer, filepath);
-    PageRank* pagerank = new PageRank(buffer, filepath);
+    if (app_name == "pagerank") {
+        Degree* degree = new Degree(buffer, filepath);
+        PageRank* pagerank = new PageRank(buffer, filepath);
+        auto p2 = std::chrono::high_resolution_clock::now();
+        degree->initialize();
+        degree->startProcessing(1);
 
-    // app = new ShortestPath(buffer, 1);
-    // app = new ConnectedComponents(buffer);
-
-
-    degree->initialize();
-    degree->startProcessing(1);
-
-    pagerank->initialize();
-    pagerank->startProcessing(iterations);
-
-    auto p3 = std::chrono::high_resolution_clock::now();
-    auto load_data_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p2 - p1);
-    auto process_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p3 - p2);
-    spdlog::info("Load Data time: {} ms", load_data_duration.count());
-    spdlog::info("Execution time: {} ms", process_duration.count());
-    
-    auto collect_result_start = std::chrono::high_resolution_clock::now();
-    pagerank->collectResults();
-    auto vertices = pagerank->get_vertices();
-    auto collect_result_end = std::chrono::high_resolution_clock::now();
-    auto collect_result_duration = std::chrono::duration_cast<std::chrono::milliseconds>(collect_result_end - collect_result_start);
-    spdlog::info("Collect result time: {} ms", collect_result_duration.count());
-
-    std::ofstream outfile;
-    filename = filename + "_" + std::to_string(buffer_config.self_rank);
-    std::string outfilepath = outdir + "/actual_results/" + filename;
-    outfile.open(outfilepath);
-
-    if (!outfile.is_open()) {
-        spdlog::error("Failed to open file {}", outfilepath);
+        pagerank->initialize();
+        pagerank->startProcessing(iterations);
+        auto p3 = std::chrono::high_resolution_clock::now();
+        auto load_data_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p2 - p1);
+        auto process_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p3 - p2);
+        spdlog::info("Load Data time: {} ms", load_data_duration.count());
+        spdlog::info("Execution time: {} ms", process_duration.count());
+        buffer->WriteMetrics();
+        degree->WriteMetrics("degree");
+        pagerank->WriteMetrics("pagerank");
+    } else if (app_name == "connectedcomps") {
+        ConnectedComponents* comps = new ConnectedComponents(buffer, filepath);
+        auto p2 = std::chrono::high_resolution_clock::now();
+        comps->initialize();
+        comps->startProcessing(iterations);
+        auto p3 = std::chrono::high_resolution_clock::now();
+        auto load_data_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p2 - p1);
+        auto process_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p3 - p2);
+        spdlog::info("Load Data time: {} ms", load_data_duration.count());
+        spdlog::info("Execution time: {} ms", process_duration.count());
+        buffer->WriteMetrics();
+        comps->WriteMetrics("comps");
+    } else if (app_name == "shortestpath") {
+        ShortestPath* sssp = new ShortestPath(buffer, filepath);
+        auto p2 = std::chrono::high_resolution_clock::now();
+        sssp->initialize();
+        sssp->startProcessing(iterations);
+        auto p3 = std::chrono::high_resolution_clock::now();
+        auto load_data_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p2 - p1);
+        auto process_duration = std::chrono::duration_cast<std::chrono::milliseconds>(p3 - p2);
+        spdlog::info("Load Data time: {} ms", load_data_duration.count());
+        spdlog::info("Execution time: {} ms", process_duration.count());
+        buffer->WriteMetrics();
+        sssp->WriteMetrics("sssp");
+    } else {
+        std::cout << "Unknown app name" << std::endl;
         return -1;
     }
-
-    auto write_start = std::chrono::high_resolution_clock::now();
-    for (auto &vertex: vertices) {
-        double result = vertex.get_result();
-        outfile << vertex.get_id() << " " << result << std::endl;
-    }
-    auto write_end = std::chrono::high_resolution_clock::now();
-    auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_end - write_start);
-    spdlog::info("Write time: {} ms", write_duration.count());
-
-    spdlog::info("Writing metrics");
-    buffer->WriteMetrics();
-    degree->WriteMetrics("degree");
-    pagerank->WriteMetrics("pagerank");
 }

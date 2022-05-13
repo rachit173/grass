@@ -1,12 +1,13 @@
 NUM_WORKERS=$1
 GRAPH_DATA=$2
+APP_NAME=$3
 if [ -z $NUM_WORKERS ]; then
   NUM_WORKERS=2
 fi
 
 BASE_DIR=/mnt/Work/grass
 DEPLOY_DIR=$BASE_DIR/deploy
-APP_NAME="pagerank"
+SSH_KEY_FILE=/users/sarthi/.ssh/cloud_lab
 
 mkdir -p $BASE_DIR/tracing/
 
@@ -29,7 +30,7 @@ CopyLogFile() {
   for i in "${addrs_arr[@]}"; do
     echo "Collecting tracing metrics from ${addrs_arr[@]}"
     DEBUG_LOG_FILE="${APP_NAME}_${GRAPH_DATA}${rank}_debug.log"
-    rsync $i:$DEPLOY_DIR/logs/$DEBUG_LOG_FILE $BASE_DIR/tracing/$DEBUG_LOG_FILE
+    rsync -e "ssh -i $SSH_KEY_FILE" $i:$DEPLOY_DIR/logs/$DEBUG_LOG_FILE $BASE_DIR/tracing/$DEBUG_LOG_FILE
     if [ $? -ne 0 ]; then
       echo "Collecting tracing metrics failed. Exiting..."
       exit 1
