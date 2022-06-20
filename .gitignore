@@ -10,3 +10,6 @@ third_party/*
 deploy/
 *.deb
 *.run
+*.zip
+libtorch/*
+venv/*
