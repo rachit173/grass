@@ -7,7 +7,7 @@ fi
 
 BASE_DIR=/mnt/Work/grass
 DEPLOY_DIR=$BASE_DIR/deploy
-SSH_KEY_FILE=/users/sarthi/.ssh/cloud_lab
+SSH_KEY_FILE=/users/ajsj7598/.ssh/id_rsa
 
 mkdir -p $BASE_DIR/tracing/
 
