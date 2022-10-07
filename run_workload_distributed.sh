@@ -15,7 +15,7 @@ DEPLOY_DIR=$BASE_DIR/deploy
 BINARY_DIR=$BASE_DIR/bazel-bin
 GRAPH_DATA_DIR=$BASE_DIR/resources/graphs/
 TMP_CONFIG_FILE=$BASE_DIR/tmp_exec.conf
-SSH_KEY_FILE=/users/sarthi/.ssh/cloud_lab
+SSH_KEY_FILE=/users/ajsj7598/.ssh/id_rsa
 SOCKET_OFFSET=16
 CURRENT_MACHINE_IP="10.10.1.3"
 
@@ -102,7 +102,7 @@ local capacity=$3
 local graph_data=$4
 local app=$5
 GenerateServerAddresses $num_workers
-echo "Runnning single machine, $num_workers cores"
+echo "Runnning $num_workers worker processes"
 rm $TMP_CONFIG_FILE
 cat >> $TMP_CONFIG_FILE << EOF
 buffer.capacity=$capacity

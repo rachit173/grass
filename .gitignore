@@ -4,6 +4,7 @@ bazel-*
 perf_log/
 resources/graphs/*
 graphbench/*
+or-tools/*
 tmp_exec.conf
 third_party/*
 !third_party/*.BUILD
