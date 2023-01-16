@@ -13,3 +13,4 @@ deploy/
 *.zip
 libtorch/*
 venv/*
+or-tools/*

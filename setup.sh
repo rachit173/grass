@@ -36,5 +36,3 @@ pushd lapackpp
 make config prefix=$PWD/install
 make install
 popd
-
-popd

@@ -11,7 +11,7 @@ cc_library(
   ],
   copts = [
     "-std=c++17"
-  ]
+  ],
 )
 
 cc_binary(
