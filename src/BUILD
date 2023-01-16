@@ -1,38 +1,31 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-  name = "distributed_buffer",
-  srcs = ["distributed_buffer.cc"],
-  hdrs = ["distributed_buffer.h],
-  deps = [
-    "//protos:graph_cc_grpc",
+  name = "base_lib",
+  srcs = ["base_lib.h"],
+  deps = [ 
+    "//protos:partition_cc_grpc",
     "@com_github_grpc_grpc//:grpc++",
-    "@com_google_absl//absl/strings",
-    "@com_github_grpc_grpc//:grpc++_reflection",
-
+    "@spdlog"
   ],
   copts = [
     "-std=c++17"
   ],
-  linkopts = [
-    "-lpthread"
-  ]
 )
 
 cc_binary(
-  name = "worker",
-  srcs = ["worker_main.cc"],
+  name = "run_app",
+  srcs = [ "run_app.cc"],
   deps = [
-    "//protos:graph_cc_grpc",
-    "@com_github_grpc_grpc//:grpc++",
-    "@com_google_absl//absl/strings",
-    "@com_github_grpc_grpc//:grpc++_reflection",
+    "//src/apps:page_rank",
+    "//src/apps:connected_comp",
+    "//src/apps:shortest_path",
+    "//src/apps:degree",
+    "//src/utils:logger",
+    "//src/utils:config_utils",
   ],
   copts = [
     "-std=c++17"
   ],
-  linkopts = [
-    "-lpthread"
-  ]
 )

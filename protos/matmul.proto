@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package matmul;
+
+message MatrixState {
+  repeated double values = 1;
+  message Result {
+    repeated double values = 1;
+  }
+  repeated Result results = 2;
+}
+
+message Matrix {
+  uint64 id = 1;
+  uint64 num_rows = 2;
+  uint64 num_cols = 3;
+  optional MatrixState state = 4;
+}
+
+message MatrixPartition {
+  Matrix matrix = 1;
+}
+
+// This may be unnecessary, putting it here for completeness.
+message InteractionMatrices {
+  repeated Matrix matrices = 1;
+}

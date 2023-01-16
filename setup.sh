@@ -20,3 +20,19 @@ pushd or-tools
 # make cc
 # make 
 popd
+
+# Install dependencies
+mkdir -p third_party
+pushd third_party
+
+# OpenBLAS
+sudo apt update
+sudo apt install -y libopenblas-dev
+# sudo update-alternatives --config libblas.so.3
+
+# lapackpp  
+git clone https://bitbucket.org/icl/lapackpp.git
+pushd lapackpp
+make config prefix=$PWD/install
+make install
+popd

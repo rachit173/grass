@@ -58,3 +58,17 @@ http_archive(
     strip_prefix = "benchmark-bf585a2789e30585b4e3ce6baf11ef2750b54677",
     sha256 = "2a778d821997df7d8646c9c59b8edb9a573a6e04c534c01892a40aa524a7b68c",
 )
+
+http_archive(
+    name = "spdlog",
+    build_file = "//third_party:spdlog.BUILD",
+    sha256 = "f0114a4d3c88be9e696762f37a7c379619443ce9d668546c61b21d41affe5b62",
+    strip_prefix = "spdlog-1.7.0",
+    urls = ["https://github.com/gabime/spdlog/archive/v1.7.0.tar.gz"],
+)
+ 
+new_local_repository(
+    name = "lapackpp",
+    path = "third_party/lapackpp/install",
+    build_file = "third_party/lapackpp.BUILD",
+)
